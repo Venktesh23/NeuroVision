@@ -1,4 +1,4 @@
-# NeuroVision: AI-powered detection when seconds matter By Abubakr and Bekhruz
+# NeuroVision
 
 NeuroVision is an advanced AI-powered stroke detection platform that combines cutting-edge technologies to provide real-time health monitoring and early warning signs of stroke. By analyzing facial asymmetry, posture anomalies, and speech patterns, the system offers comprehensive stroke risk assessment.
 
@@ -170,7 +170,3 @@ All sensitive configuration is handled through environment variables:
 - `GOOGLE_AI_API_KEY`: Google AI API key
 - `ASSEMBLYAI_API_KEY`: AssemblyAI API key
 - `PORT`: Server port (defaults to 5000)
-
-## Disclaimer
-
-This tool is for educational and screening purposes only and should not be used for medical diagnosis. If you suspect a stroke, call emergency services immediately (911 in the US). Remember the FAST method: Facial drooping, Arm weakness, Speech difficulties, Time to call emergency services.
