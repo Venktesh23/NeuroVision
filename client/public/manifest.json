@@ -1,0 +1,9 @@
+{
+  "short_name": "NeuroVision",
+  "name": "NeuroVision - Advanced Neurological Assessment Platform",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1e293b",
+  "background_color": "#f8fafc",
+  "description": "Advanced neurological assessment platform with real-time stroke detection capabilities"
+} 
