@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ApiService from '../utils/apiService';
+import { useAuth } from '../contexts/AuthContext';
 
 const HistoricalData = () => {
   const [recentAssessments, setRecentAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchRecentAssessments();
@@ -14,12 +16,12 @@ const HistoricalData = () => {
   const fetchRecentAssessments = async () => {
     try {
       setLoading(true);
-      const data = await ApiService.getRecentAssessments(10);
+      const data = await ApiService.getUserAssessmentHistory(20);
       setRecentAssessments(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load historical data');
-      console.error('Error fetching assessments:', err);
+      setError('Failed to load your assessment history');
+      console.error('Error fetching user assessments:', err);
     } finally {
       setLoading(false);
     }
@@ -108,7 +110,7 @@ const HistoricalData = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          Assessment History
+          Your Assessment History
         </motion.h2>
         <motion.button 
           onClick={fetchRecentAssessments}
@@ -128,8 +130,8 @@ const HistoricalData = () => {
           animate="animate"
         >
           <div className="text-6xl mb-4">📊</div>
-          <p className="text-lg font-medium">No assessment history available.</p>
-          <p className="text-sm mt-2">Complete a detection session to see results here.</p>
+          <p className="text-lg font-medium">No assessment history available for {user?.name}.</p>
+          <p className="text-sm mt-2">Complete a detection session to see your personal results here.</p>
           <p className="text-xs mt-4 text-gray-400 italic">
             Note: Data persistence requires database connection
           </p>

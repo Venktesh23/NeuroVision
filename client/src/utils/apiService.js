@@ -2,14 +2,93 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
 class ApiService {
+  // Get auth token from localStorage
+  static getAuthToken() {
+    return localStorage.getItem('neurovision_token');
+  }
+
+  // Get auth headers
+  static getAuthHeaders() {
+    const token = this.getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+  }
+
+  // Authentication endpoints
+  static async login(email, password) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  }
+
+  static async register(name, email, password) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Registration failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  }
+
+  static async getUserProfile() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get user profile');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  }
+
   // Save assessment data to server
   static async saveAssessment(assessmentData) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/assessments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           ...assessmentData,
           timestamp: new Date().toISOString()
@@ -18,7 +97,6 @@ class ApiService {
       
       if (!response.ok) {
         if (response.status === 503) {
-          // Service unavailable - database not connected
           const errorData = await response.json();
           if (errorData.fallback) {
             console.warn('Database unavailable, assessment processed but not saved');
@@ -42,7 +120,6 @@ class ApiService {
       
       if (!response.ok) {
         if (response.status === 503) {
-          // Service unavailable - database not connected
           const errorData = await response.json();
           if (errorData.fallback) {
             console.warn('Database unavailable, using fallback response');
@@ -169,6 +246,31 @@ class ApiService {
       return await response.json();
     } catch (error) {
       console.error('Error checking API health:', error);
+      throw error;
+    }
+  }
+
+  // Get user's assessment history
+  static async getUserAssessmentHistory(limit = 20) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/assessments/user-history?limit=${limit}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        if (response.status === 503) {
+          const errorData = await response.json();
+          if (errorData.fallback) {
+            console.warn('Database unavailable, using fallback response');
+            return errorData.fallback;
+          }
+        }
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user assessment history:', error);
       throw error;
     }
   }

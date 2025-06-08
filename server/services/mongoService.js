@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const { ObjectId } = require('mongodb');
 
 class MongoService {
   constructor() {
@@ -74,24 +75,23 @@ class MongoService {
   // ASSESSMENT OPERATIONS
   
   // Save a new assessment
-  async saveAssessment(assessmentData) {
+  async saveAssessment(assessmentData, userId = null) {
     try {
       const collection = this.getDb().collection('assessments');
       
-      const assessment = {
-        _id: new Date().getTime().toString(), // Use timestamp as ID
-        asymmetryMetrics: assessmentData.asymmetryMetrics,
-        postureMetrics: assessmentData.postureMetrics,
-        speechMetrics: assessmentData.speechMetrics || {},
-        riskLevel: assessmentData.riskLevel,
-        timestamp: assessmentData.timestamp || new Date().toISOString(),
-        createdAt: new Date()
+      const assessmentWithUser = {
+        ...assessmentData,
+        userId: userId ? new ObjectId(userId) : null,
+        createdAt: assessmentData.timestamp || new Date().toISOString()
       };
       
-      const result = await collection.insertOne(assessment);
-      console.log('[INFO] Assessment saved:', assessment._id);
+      const result = await collection.insertOne(assessmentWithUser);
+      console.log('[INFO] Assessment saved:', assessmentWithUser._id);
       
-      return { id: assessment._id, insertedId: result.insertedId };
+      return {
+        id: result.insertedId,
+        ...assessmentWithUser
+      };
     } catch (error) {
       console.error('[ERROR] Failed to save assessment:', error);
       throw error;
@@ -284,6 +284,63 @@ class MongoService {
         error: error.message,
         timestamp: new Date().toISOString()
       };
+    }
+  }
+
+  // User operations
+  async createUser(userData) {
+    try {
+      const result = await this.getDb().collection('users').insertOne(userData);
+      return { id: result.insertedId, ...userData };
+    } catch (error) {
+      console.error('[ERROR] Failed to create user:', error);
+      throw error;
+    }
+  }
+
+  async findUserByEmail(email) {
+    try {
+      return await this.getDb().collection('users').findOne({ email });
+    } catch (error) {
+      console.error('[ERROR] Failed to find user by email:', error);
+      throw error;
+    }
+  }
+
+  async findUserById(userId) {
+    try {
+      return await this.getDb().collection('users').findOne({ _id: new ObjectId(userId) });
+    } catch (error) {
+      console.error('[ERROR] Failed to find user by ID:', error);
+      throw error;
+    }
+  }
+
+  async updateUserLastLogin(userId) {
+    try {
+      await this.getDb().collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { lastLogin: new Date().toISOString() } }
+      );
+    } catch (error) {
+      console.error('[ERROR] Failed to update last login:', error);
+      throw error;
+    }
+  }
+
+  // Get user's assessments
+  async getUserAssessments(userId, limit = 10) {
+    try {
+      const assessments = await this.getDb().collection('assessments')
+        .find({ userId: new ObjectId(userId) })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .toArray();
+      
+      return assessments;
+    } catch (error) {
+      console.error('[ERROR] Failed to get user assessments:', error);
+      throw error;
     }
   }
 }

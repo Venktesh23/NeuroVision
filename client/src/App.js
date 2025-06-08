@@ -12,6 +12,9 @@ import StrokeAssessment from "./components/StrokeAssessment";
 import ErrorBoundary, { withErrorBoundary } from "./components/ErrorBoundary";
 import { LoadingButton, CameraLoader } from "./components/LoadingStates";
 import ApiService from "./utils/apiService";
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthPage from './components/Auth/AuthPage';
+import UserProfile from './components/UserProfile';
 
 // Wrap critical components with error boundaries
 const SafeSpeechAnalysis = withErrorBoundary(SpeechAnalysis, "SpeechAnalysis");
@@ -19,7 +22,8 @@ const SafeHistoricalData = withErrorBoundary(HistoricalData, "HistoricalData");
 const SafeResultsPanel = withErrorBoundary(ResultsPanel, "ResultsPanel");
 const SafeDetectionView = withErrorBoundary(DetectionView, "DetectionView");
 
-function App() {
+// Create authenticated app component
+const AuthenticatedApp = () => {
   const [faceMeshResults, setFaceMeshResults] = useState(null);
   const [poseResults, setPoseResults] = useState(null);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -36,6 +40,8 @@ function App() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const lastSaveRef = useRef(null);
+
+  const { user } = useAuth();
 
   const toggleDetection = async () => {
     if (!isDetecting) {
@@ -160,6 +166,35 @@ function App() {
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
   };
 
+  // Add user profile section in the header
+  const renderUserSection = () => (
+    <motion.div 
+      className="flex items-center space-x-4"
+      initial={{ x: 30, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ delay: 0.3, duration: 0.5 }}
+    >
+      <div className="text-right">
+        <p className="text-white font-bold">Welcome, {user?.name}</p>
+        <p className="text-gray-300 text-sm">{user?.email}</p>
+      </div>
+      <div 
+        className={`text-sm px-4 py-2 rounded-full font-bold shadow-lg transition-all duration-300 ${
+          serverStatus === "connected" 
+            ? "bg-emerald-500 text-white" 
+            : serverStatus === "disconnected" 
+              ? "bg-red-500 text-white" 
+              : "bg-amber-500 text-white"
+        }`}
+        role="status"
+        aria-live="polite"
+        aria-label={`Server connection status: ${serverStatus}`}
+      >
+        SERVER: {serverStatus === "connected" ? "CONNECTED" : serverStatus === "disconnected" ? "OFFLINE" : "UNKNOWN"}
+      </div>
+    </motion.div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <motion.header 
@@ -181,32 +216,12 @@ function App() {
                 Advanced Neurological Assessment Platform
               </p>
             </motion.div>
-            <motion.div 
-              className="text-right"
-              initial={{ x: 30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              <div 
-                className={`text-sm px-4 py-2 rounded-full font-bold shadow-lg transition-all duration-300 ${
-                  serverStatus === "connected" 
-                    ? "bg-emerald-500 text-white" 
-                    : serverStatus === "disconnected" 
-                      ? "bg-red-500 text-white" 
-                      : "bg-amber-500 text-white"
-                }`}
-                role="status"
-                aria-live="polite"
-                aria-label={`Server connection status: ${serverStatus}`}
-              >
-                SERVER: {serverStatus === "connected" ? "CONNECTED" : serverStatus === "disconnected" ? "OFFLINE" : "UNKNOWN"}
-              </div>
-            </motion.div>
+            {renderUserSection()}
           </div>
         </div>
       </motion.header>
 
-      {/* Navigation Tabs */}
+      {/* Add User Profile to navigation tabs */}
       <motion.div 
         className="bg-white border-b-2 border-gray-200 shadow-sm"
         initial={{ opacity: 0 }}
@@ -220,7 +235,8 @@ function App() {
             {[
               { id: "detection", label: "Live Detection", ariaControls: "detection-panel" },
               { id: "speech", label: "Speech Analysis", ariaControls: "speech-panel" },
-              { id: "history", label: "Assessment History", ariaControls: "history-panel" }
+              { id: "history", label: "Assessment History", ariaControls: "history-panel" },
+              { id: "profile", label: "Profile", ariaControls: "profile-panel" }
             ].map((tab) => (
               <motion.button
                 key={tab.id}
@@ -435,6 +451,23 @@ function App() {
               <SafeHistoricalData />
             </motion.div>
           )}
+
+          {/* Add Profile Tab */}
+          {activeTab === "profile" && (
+            <motion.div 
+              key="profile"
+              className="max-w-2xl mx-auto"
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              role="tabpanel"
+              id="profile-panel"
+              aria-labelledby="profile-tab"
+            >
+              <UserProfile />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -465,6 +498,36 @@ function App() {
       </ErrorBoundary>
     </div>
   );
+};
+
+// Main App wrapper with authentication
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
+
+// App content that checks authentication
+const AppContent = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <motion.div
+          className="text-white text-xl font-bold"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          Loading NeuroVision...
+        </motion.div>
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <AuthenticatedApp /> : <AuthPage />;
+};
 
 export default App;

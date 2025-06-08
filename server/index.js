@@ -8,6 +8,8 @@ const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { AssemblyAI } = require('assemblyai');
 const mongoService = require('./services/mongoService');
+const authRoutes = require('./routes/auth');
+const { authenticateToken } = require('./middleware/auth');
 
 // Initialize the app
 const app = express();
@@ -69,6 +71,9 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client/build')));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Add authentication routes
+app.use('/api/auth', authRoutes);
+
 // API endpoints
 app.get('/api/health', async (req, res) => {
   try {
@@ -98,7 +103,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Save assessment data
-app.post('/api/assessments', async (req, res) => {
+app.post('/api/assessments', authenticateToken, async (req, res) => {
   try {
     const { asymmetryMetrics, postureMetrics, speechMetrics, riskLevel, timestamp } = req.body;
     
@@ -124,7 +129,7 @@ app.post('/api/assessments', async (req, res) => {
       timestamp: timestamp || new Date().toISOString()
     };
     
-    const result = await mongoService.saveAssessment(assessmentData);
+    const result = await mongoService.saveAssessment(assessmentData, req.user.userId);
     
     res.status(201).json({ 
       id: result.id, 
@@ -177,6 +182,26 @@ app.get('/api/assessments/stats', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] Failed to fetch assessment stats:', error);
     res.status(500).json({ error: 'Failed to fetch assessment statistics', details: error.message });
+  }
+});
+
+// Get user's assessment history
+app.get('/api/assessments/user-history', authenticateToken, async (req, res) => {
+  try {
+    if (!dbConnected) {
+      return res.status(503).json({ 
+        error: 'Database not available',
+        fallback: []
+      });
+    }
+    
+    const limit = req.query.limit ? parseInt(req.query.limit) : 20;
+    const userAssessments = await mongoService.getUserAssessments(req.user.userId, limit);
+    
+    res.json(userAssessments);
+  } catch (error) {
+    console.error('[ERROR] Failed to fetch user assessments:', error);
+    res.status(500).json({ error: 'Failed to fetch user assessments', details: error.message });
   }
 });
 
