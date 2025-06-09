@@ -6,6 +6,7 @@ node_modules/
 # Production build files
 /build
 /client/build
+/client/coverage
 
 # Environment variables
 .env

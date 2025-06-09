@@ -32,8 +32,21 @@ NeuroVision is an advanced AI-powered stroke detection platform that combines cu
 ### 1. Clone and Install
 ```bash
 git clone <your-repo-url>
-cd neurovision
-npm install
+cd stroke-shield-main
+```
+
+**Quick Start** (Automated setup):
+```bash
+./scripts/dev.sh
+```
+
+**Manual Setup**:
+```bash
+# Install server dependencies
+cd server && npm install
+
+# Install client dependencies  
+cd ../client && npm install
 ```
 
 ### 2. Database Setup (MongoDB Atlas)

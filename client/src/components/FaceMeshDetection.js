@@ -110,7 +110,7 @@ const FaceMeshDetection = ({ webcamRef, isDetecting, onResults, onMetricsUpdate 
     } else if (camera && !isDetecting) {
       camera.stop();
     }
-  }, [camera, faceMesh, isDetecting]);
+  }, [camera, isDetecting]);
   
   return null; // This component doesn't render anything
 };

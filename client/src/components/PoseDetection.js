@@ -115,7 +115,7 @@ const PoseDetection = ({ webcamRef, isDetecting, onResults, onMetricsUpdate }) =
     } else if (camera && !isDetecting) {
       camera.stop();
     }
-  }, [camera, isDetecting, pose]);
+  }, [camera, isDetecting]);
   
   return null; // This component doesn't render anything
 };

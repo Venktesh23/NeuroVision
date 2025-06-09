@@ -1,5 +1,5 @@
 // API service for NeuroVision application
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 class ApiService {
   // Get auth token from localStorage
