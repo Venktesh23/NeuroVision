@@ -2,17 +2,22 @@
   "name": "neurovision-client",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
     "@mediapipe/camera_utils": "^0.3.1675466862",
     "@mediapipe/control_utils": "^0.6.1675466023",
     "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "@mediapipe/pose": "^0.5.1675469404",
-    "chart.js": "^3.9.1",
-    "framer-motion": "^12.16.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "chart.js": "^4.4.6",
+    "framer-motion": "^11.11.17",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.3.1",
+    "react-scripts": "^5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -43,7 +48,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "autoprefixer": "^10.4.21",
-    "jest-environment-jsdom": "^30.0.0-beta.3",
+    "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.17"
   }

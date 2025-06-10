@@ -1,10 +1,11 @@
 [build]
   base = "client/"
   publish = "client/build/"
-  command = "npm run build"
+  command = "npm install --legacy-peer-deps && npm run build"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "18.20.0"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [[redirects]]
   from = "/*"

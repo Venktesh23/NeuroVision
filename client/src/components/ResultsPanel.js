@@ -1,10 +1,27 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import Chart from 'chart.js/auto';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const ResultsPanel = ({ asymmetryMetrics, postureMetrics, riskLevel, assessmentFindings }) => {
-  const chartRef = useRef(null);
-  const chartInstance = useRef(null);
   
   // Format a metric value to 2 decimal places and add a % sign
   const formatMetric = (value) => {
@@ -22,127 +39,108 @@ const ResultsPanel = ({ asymmetryMetrics, postureMetrics, riskLevel, assessmentF
     }
   };
   
-  // Create or update chart when metrics change
-  useEffect(() => {
-    if (!chartRef.current) return;
-    
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-    
-    // Prepare data for chart
-    const asymmetryValues = [
-      asymmetryMetrics.eyeAsymmetry || 0,
-      asymmetryMetrics.mouthAsymmetry || 0,
-      asymmetryMetrics.eyebrowAsymmetry || 0,
-      asymmetryMetrics.overallAsymmetry || 0
-    ];
-    
-    const postureValues = [
-      postureMetrics.shoulderImbalance || 0,
-      postureMetrics.headTilt || 0,
-      postureMetrics.bodyLean || 0
-    ];
-    
-    // Create chart
-    const ctx = chartRef.current.getContext('2d');
-    chartInstance.current = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: [
-          'Eye Asymmetry', 
-          'Mouth Asymmetry', 
-          'Eyebrow Asymmetry', 
-          'Overall Facial Asymmetry',
-          'Shoulder Imbalance',
-          'Head Tilt',
-          'Body Lean'
-        ],
-        datasets: [{
-          label: 'Asymmetry Metrics (%)',
-          data: [...asymmetryValues.map(v => v * 100), ...postureValues.map(v => v * 100)],
-          backgroundColor: [
-            'rgba(239, 68, 68, 0.8)',
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(245, 158, 11, 0.8)',
-            'rgba(16, 185, 129, 0.8)',
-            'rgba(139, 92, 246, 0.8)',
-            'rgba(236, 72, 153, 0.8)',
-            'rgba(107, 114, 128, 0.8)'
-          ],
-          borderColor: [
-            'rgba(239, 68, 68, 1)',
-            'rgba(59, 130, 246, 1)',
-            'rgba(245, 158, 11, 1)',
-            'rgba(16, 185, 129, 1)',
-            'rgba(139, 92, 246, 1)',
-            'rgba(236, 72, 153, 1)',
-            'rgba(107, 114, 128, 1)'
-          ],
-          borderWidth: 2,
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
+  // Prepare data for chart
+  const asymmetryValues = [
+    asymmetryMetrics.eyeAsymmetry || 0,
+    asymmetryMetrics.mouthAsymmetry || 0,
+    asymmetryMetrics.eyebrowAsymmetry || 0,
+    asymmetryMetrics.overallAsymmetry || 0
+  ];
+  
+  const postureValues = [
+    postureMetrics.shoulderImbalance || 0,
+    postureMetrics.headTilt || 0,
+    postureMetrics.bodyLean || 0
+  ];
+
+  const chartData = {
+    labels: [
+      'Eye Asymmetry', 
+      'Mouth Asymmetry', 
+      'Eyebrow Asymmetry', 
+      'Overall Facial Asymmetry',
+      'Shoulder Imbalance',
+      'Head Tilt',
+      'Body Lean'
+    ],
+    datasets: [{
+      label: 'Asymmetry Metrics (%)',
+      data: [...asymmetryValues.map(v => v * 100), ...postureValues.map(v => v * 100)],
+      backgroundColor: [
+        'rgba(239, 68, 68, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
+        'rgba(245, 158, 11, 0.8)',
+        'rgba(16, 185, 129, 0.8)',
+        'rgba(139, 92, 246, 0.8)',
+        'rgba(236, 72, 153, 0.8)',
+        'rgba(107, 114, 128, 0.8)'
+      ],
+      borderColor: [
+        'rgba(239, 68, 68, 1)',
+        'rgba(59, 130, 246, 1)',
+        'rgba(245, 158, 11, 1)',
+        'rgba(16, 185, 129, 1)',
+        'rgba(139, 92, 246, 1)',
+        'rgba(236, 72, 153, 1)',
+        'rgba(107, 114, 128, 1)'
+      ],
+      borderWidth: 2,
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Asymmetry (%)',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100,
-            title: {
-              display: true,
-              text: 'Asymmetry (%)',
-              font: {
-                size: 14,
-                weight: 'bold'
-              }
-            },
-            grid: {
-              color: 'rgba(0, 0, 0, 0.1)'
-            }
-          },
-          x: {
-            grid: {
-              display: false
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleFont: {
-              size: 14,
-              weight: 'bold'
-            },
-            bodyFont: {
-              size: 12
-            },
-            cornerRadius: 8,
-            callbacks: {
-              label: function(context) {
-                return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
-              }
-            }
-          }
-        },
-        animation: {
-          duration: 1000,
-          easing: 'easeOutQuart'
+      x: {
+        grid: {
+          display: false
         }
       }
-    });
-    
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: {
+          size: 14,
+          weight: 'bold'
+        },
+        bodyFont: {
+          size: 12
+        },
+        cornerRadius: 8,
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+          }
+        }
       }
-    };
-  }, [asymmetryMetrics, postureMetrics]);
+    },
+    animation: {
+      duration: 1000,
+      easing: 'easeOutQuart'
+    }
+  };
 
   // Animation variants
   const containerVariants = {
@@ -207,7 +205,7 @@ const ResultsPanel = ({ asymmetryMetrics, postureMetrics, riskLevel, assessmentF
           transition={{ duration: 0.2 }}
         >
           <div style={{ height: '300px' }}>
-            <canvas ref={chartRef}></canvas>
+            <Bar data={chartData} options={chartOptions} />
           </div>
         </motion.div>
       </motion.div>
