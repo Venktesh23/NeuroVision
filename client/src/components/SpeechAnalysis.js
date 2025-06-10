@@ -20,6 +20,12 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
   const [error, setError] = useState(null);
   
   const recognitionRef = useRef(null);
+  const transcriptRef = useRef('');
+
+  // Update transcript ref when state changes
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   // Memoize reading passages to prevent recreation on every render
   const readingPassages = useMemo(() => [
@@ -34,30 +40,35 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
   const fetchRecentSpeechAnalyses = useCallback(async () => {
     try {
       const data = await ApiService.getRecentSpeechAnalyses();
-      setRecentAnalyses(data);
+      setRecentAnalyses(data || []);
     } catch (error) {
       console.warn('Error fetching recent speech analyses:', error);
-      // Don't show error to user for this non-critical operation
+      setRecentAnalyses([]);
     }
   }, []);
 
   // Analyze speech through backend API
   const analyzeSpeech = useCallback(async (speechTranscript) => {
+    if (!speechTranscript || speechTranscript.trim().length === 0) {
+      console.warn('No transcript provided for analysis');
+      return;
+    }
+
     setRecordingStatus("Analyzing speech patterns...");
     
     try {
       const data = await ApiService.analyzeSpeech(speechTranscript, currentPassage);
-      setSpeechMetrics(data);
+      setSpeechMetrics(data || {});
       setRecordingStatus("Analysis complete.");
       setError(null);
       
       // Update parent component with speech metrics
-      if (onSpeechMetricsUpdate) {
+      if (onSpeechMetricsUpdate && data) {
         onSpeechMetricsUpdate(data);
       }
       
       // Refresh recent analyses
-      fetchRecentSpeechAnalyses();
+      await fetchRecentSpeechAnalyses();
       
     } catch (error) {
       console.error('Error analyzing speech:', error);
@@ -67,7 +78,18 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
     }
   }, [currentPassage, onSpeechMetricsUpdate, fetchRecentSpeechAnalyses]);
 
-  // Check browser support and initialize
+  // Set random reading passage
+  const setRandomPassage = useCallback(() => {
+    if (!readingPassages || readingPassages.length === 0) {
+      console.error('Reading passages not available');
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * readingPassages.length);
+    setCurrentPassage(readingPassages[randomIndex]);
+  }, [readingPassages]);
+
+  // Check browser support and initialize - removed circular dependencies
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const initializeSpeechRecognition = useCallback(() => {
     try {
       setIsInitializing(true);
@@ -120,8 +142,11 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       recognition.onend = () => {
         console.log('Speech recognition ended');
         setIsRecording(false);
-        const finalTranscript = transcript.trim();
+        
+        // Use ref to get current transcript value to avoid stale closure
+        const finalTranscript = transcriptRef.current.trim();
         if (finalTranscript && finalTranscript.length > 5) {
+          // eslint-disable-next-line react-hooks/exhaustive-deps
           analyzeSpeech(finalTranscript);
         } else {
           setRecordingStatus("No speech detected or speech too short. Please try again with at least a few words.");
@@ -166,20 +191,19 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       setError(err.message);
       setRecordingStatus(err.message);
     }
-  }, [transcript, analyzeSpeech]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, []); // Removed dependencies to prevent infinite re-renders
 
-  // Set random reading passage
-  const setRandomPassage = useCallback(() => {
-    const randomIndex = Math.floor(Math.random() * readingPassages.length);
-    setCurrentPassage(readingPassages[randomIndex]);
-  }, [readingPassages]);
-
-  // Initialize speech recognition
+  // Initialize speech recognition only once
   useEffect(() => {
     initializeSpeechRecognition();
+  }, [initializeSpeechRecognition]);
+
+  // Set initial passage and fetch analyses only once
+  useEffect(() => {
     setRandomPassage();
     fetchRecentSpeechAnalyses();
-  }, [initializeSpeechRecognition, setRandomPassage, fetchRecentSpeechAnalyses]);
+  }, [setRandomPassage, fetchRecentSpeechAnalyses]);
   
   // Start recording
   const startRecording = useCallback(() => {
@@ -190,6 +214,7 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
 
     try {
       setTranscript('');
+      transcriptRef.current = '';
       setError(null);
       recognitionRef.current.start();
     } catch (err) {
@@ -423,138 +448,132 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
           </div>
         </div>
       </motion.div>
-      
-      {/* Speech Analysis Results */}
-      <motion.div 
-        className="mb-8"
-        variants={cardVariants}
-        initial="initial"
-        animate="animate"
-        transition={{ delay: 0.3 }}
-      >
-        <h3 className="text-xl font-bold mb-6 text-gray-800">Analysis Results</h3>
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <motion.div 
-            className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-md"
-            whileHover={{ scale: 1.02 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="text-sm text-gray-600 font-semibold mb-2">SPEECH COHERENCE</div>
-            <div className="text-3xl font-black text-gray-800">
-              {speechMetrics.coherenceScore !== null ? `${speechMetrics.coherenceScore}%` : 'N/A'}
-            </div>
-          </motion.div>
-          <motion.div 
-            className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-md"
-            whileHover={{ scale: 1.02 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="text-sm text-gray-600 font-semibold mb-2">SLURRED SPEECH</div>
-            <div className="text-3xl font-black text-gray-800">
-              {speechMetrics.slurredSpeechScore !== null ? `${speechMetrics.slurredSpeechScore}%` : 'N/A'}
-            </div>
-          </motion.div>
-          <motion.div 
-            className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-md"
-            whileHover={{ scale: 1.02 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="text-sm text-gray-600 font-semibold mb-2">WORD FINDING</div>
-            <div className="text-3xl font-black text-gray-800">
-              {speechMetrics.wordFindingScore !== null ? `${speechMetrics.wordFindingScore}%` : 'N/A'}
-            </div>
-          </motion.div>
-          <motion.div 
-            className={`p-6 rounded-xl border-2 shadow-md ${getRiskBgColor(speechMetrics.overallRisk)}`}
-            whileHover={{ scale: 1.02 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="text-sm text-gray-700 font-semibold mb-2">SPEECH RISK LEVEL</div>
-            <div className={`text-3xl font-black ${getRiskColor(speechMetrics.overallRisk)}`}>
-              {speechMetrics.overallRisk ? speechMetrics.overallRisk.toUpperCase() : 'N/A'}
-            </div>
-          </motion.div>
-        </div>
-        
-        {/* Observations */}
-        <AnimatePresence>
-          {speechMetrics.observations.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <h4 className="font-bold mb-4 text-gray-800 text-lg">CLINICAL OBSERVATIONS:</h4>
-              <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-                <ul className="space-y-3">
-                  {speechMetrics.observations.map((observation, index) => (
-                    <motion.li 
-                      key={index} 
-                      className="text-gray-700 leading-relaxed font-medium"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      • {observation}
-                    </motion.li>
-                  ))}
-                </ul>
+
+      {/* Speech Metrics Display */}
+      {Object.keys(speechMetrics).some(key => speechMetrics[key] !== null) && (
+        <motion.div 
+          className="mb-8"
+          variants={cardVariants}
+          initial="initial"
+          animate="animate"
+          transition={{ delay: 0.4 }}
+        >
+          <h3 className="text-xl font-bold mb-6 text-gray-800">Speech Analysis Results</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Coherence Score */}
+            {speechMetrics.coherenceScore !== null && (
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-800 mb-2">Coherence Score</h4>
+                <div className="flex items-center">
+                  <span className="text-2xl font-bold text-blue-600 mr-2">
+                    {speechMetrics.coherenceScore}%
+                  </span>
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full" 
+                      style={{ width: `${speechMetrics.coherenceScore}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-      
-      {/* Recent Analyses */}
-      <AnimatePresence>
-        {recentAnalyses.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-          >
-            <h3 className="text-xl font-bold mb-6 text-gray-800">Recent Analysis History</h3>
-            <div className="space-y-4">
-              {recentAnalyses.map((analysis, index) => {
-                const date = new Date(analysis.timestamp);
-                const formattedDate = date.toLocaleDateString() + " " + date.toLocaleTimeString();
-                const transcriptPreview = analysis.transcript.length > 50 
-                  ? analysis.transcript.substring(0, 50) + "..." 
-                  : analysis.transcript;
-                
-                return (
-                  <motion.div 
-                    key={analysis.id} 
-                    className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-md"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ scale: 1.01 }}
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <div>
-                        <span className="font-bold text-sm text-gray-700">{formattedDate}</span>
-                        <span className="text-xs font-bold text-blue-600 ml-3 px-2 py-1 bg-blue-100 rounded-full">
-                          READING ASSESSMENT
-                        </span>
-                      </div>
-                      <span className={`font-black text-lg ${getRiskColor(analysis.overallRisk)}`}>
-                        {analysis.overallRisk?.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-sm mb-3 text-gray-700 italic">"{transcriptPreview}"</p>
-                    <div className="text-xs text-gray-600 font-semibold">
-                      SCORES: {analysis.coherenceScore}% coherence • {analysis.slurredSpeechScore}% slurred • {analysis.wordFindingScore}% word finding
-                    </div>
-                  </motion.div>
-                );
-              })}
+            )}
+
+            {/* Slurred Speech Score */}
+            {speechMetrics.slurredSpeechScore !== null && (
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-800 mb-2">Speech Clarity</h4>
+                <div className="flex items-center">
+                  <span className="text-2xl font-bold text-green-600 mr-2">
+                    {speechMetrics.slurredSpeechScore}%
+                  </span>
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-600 h-2 rounded-full" 
+                      style={{ width: `${speechMetrics.slurredSpeechScore}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Word Finding Score */}
+            {speechMetrics.wordFindingScore !== null && (
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-800 mb-2">Word Finding</h4>
+                <div className="flex items-center">
+                  <span className="text-2xl font-bold text-purple-600 mr-2">
+                    {speechMetrics.wordFindingScore}%
+                  </span>
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-purple-600 h-2 rounded-full" 
+                      style={{ width: `${speechMetrics.wordFindingScore}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Overall Risk */}
+            {speechMetrics.overallRisk && (
+              <div className={`p-4 rounded-lg border-2 ${getRiskBgColor(speechMetrics.overallRisk)}`}>
+                <h4 className="font-semibold text-gray-800 mb-2">Overall Risk Level</h4>
+                <span className={`text-2xl font-bold ${getRiskColor(speechMetrics.overallRisk)}`}>
+                  {speechMetrics.overallRisk.toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Observations */}
+          {speechMetrics.observations && speechMetrics.observations.length > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <h4 className="font-semibold text-gray-800 mb-4">Clinical Observations</h4>
+              <ul className="space-y-2">
+                {speechMetrics.observations.map((observation, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                    <span className="text-gray-700">{observation}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </motion.div>
+      )}
+
+      {/* Recent Analyses */}
+      {recentAnalyses && recentAnalyses.length > 0 && (
+        <motion.div 
+          className="mb-8"
+          variants={cardVariants}
+          initial="initial"
+          animate="animate"
+          transition={{ delay: 0.6 }}
+        >
+          <h3 className="text-xl font-bold mb-6 text-gray-800">Recent Speech Analyses</h3>
+          <div className="space-y-4">
+            {recentAnalyses.slice(0, 3).map((analysis, index) => (
+              <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    {new Date(analysis.timestamp).toLocaleDateString()}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${getRiskBgColor(analysis.overallRisk)} ${getRiskColor(analysis.overallRisk)}`}>
+                    {analysis.overallRisk}
+                  </span>
+                </div>
+                <p className="text-gray-700 mt-2 text-sm">
+                  Coherence: {analysis.coherenceScore}% | 
+                  Clarity: {analysis.slurredSpeechScore}% | 
+                  Word Finding: {analysis.wordFindingScore}%
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 };
