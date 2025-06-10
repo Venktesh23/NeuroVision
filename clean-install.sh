@@ -25,13 +25,15 @@ echo "⬇️ Installing fresh dependencies..."
 # Install client dependencies
 echo "📱 Installing client dependencies..."
 cd client
-npm install --legacy-peer-deps
+npm install
+npm audit fix --force
 cd ..
 
 # Install server dependencies
 echo "🖥️ Installing server dependencies..."
 cd server
-npm install --legacy-peer-deps
+npm install
+npm audit fix --force
 cd ..
 
 echo "✅ Dependencies reinstalled successfully!"
