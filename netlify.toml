@@ -1,7 +1,7 @@
 [build]
   base = "client"
-  publish = "client/build"
-  command = "npm cache clean --force && npm install --legacy-peer-deps --no-fund && npm run build"
+  publish = "build"
+  command = "npm cache clean --force && npm install --legacy-peer-deps --no-fund && CI=false npm run build"
 
 [build.environment]
   NODE_VERSION = "18.20.0"

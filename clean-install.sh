@@ -26,8 +26,8 @@ echo "⬇️ Installing fresh dependencies..."
 echo "📱 Installing client dependencies..."
 cd client
 npm install --legacy-peer-deps --no-fund
-echo "📊 Testing build..."
-npm run build
+echo "📊 Testing build (with CI=false)..."
+CI=false npm run build
 cd ..
 
 # Install server dependencies

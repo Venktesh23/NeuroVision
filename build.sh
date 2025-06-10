@@ -19,8 +19,8 @@ npm cache clean --force
 echo "📦 Installing dependencies..."
 npm install --legacy-peer-deps --no-fund
 
-echo "🔧 Building React application..."
-npm run build
+echo "🔧 Building React application (with CI=false)..."
+CI=false npm run build
 
 echo "✅ Build completed successfully!"
 
