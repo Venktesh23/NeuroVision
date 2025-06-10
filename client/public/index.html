@@ -6,10 +6,13 @@
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="NeuroVision Application using MediaPipe"
+      content="NeuroVision - AI-powered stroke detection platform using advanced computer vision and facial analysis"
     />
+    <meta name="keywords" content="stroke detection, AI, computer vision, facial analysis, medical technology" />
+    <meta name="author" content="NeuroVision Team" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>NeuroVision App</title>
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <title>NeuroVision - AI Stroke Detection Platform</title>
     <!-- Include MediaPipe dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -24,5 +27,18 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    
+    <!-- Fallback error handling for external dependencies -->
+    <script>
+      window.addEventListener('error', function(e) {
+        console.warn('External dependency failed to load:', e.filename || e.target?.src);
+        // Continue loading the app even if some external dependencies fail
+      });
+      
+      // Ensure MediaPipe globals are available
+      window.MediaPipe = window.MediaPipe || {};
+      window.drawConnectors = window.drawConnectors || function() {};
+      window.drawLandmarks = window.drawLandmarks || function() {};
+    </script>
   </body>
 </html>
