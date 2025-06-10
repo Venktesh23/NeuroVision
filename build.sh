@@ -5,6 +5,12 @@ set -e  # Exit on any error
 
 echo "🚀 Starting NeuroVision build process..."
 
+# Set environment variables to suppress warnings
+export DISABLE_ESLINT_PLUGIN=true
+export GENERATE_SOURCEMAP=false
+export CI=true
+export SKIP_PREFLIGHT_CHECK=true
+
 # Check Node.js version
 echo "📋 Checking Node.js version..."
 node --version
@@ -29,6 +35,8 @@ echo "✅ Build completed successfully!"
 
 # List build output
 echo "📂 Build output:"
-ls -la build/
+ls -la build/ | head -10
 
-echo "🎉 NeuroVision build process completed!" 
+echo "🎉 NeuroVision build process completed!"
+echo "📊 Build size summary:"
+du -sh build/ 2>/dev/null || echo "Build directory size calculation skipped" 

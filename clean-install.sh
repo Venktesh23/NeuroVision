@@ -25,16 +25,16 @@ echo "⬇️ Installing fresh dependencies..."
 # Install client dependencies
 echo "📱 Installing client dependencies..."
 cd client
-npm install
-npm audit fix --force
+npm ci --prefer-offline --no-audit
+echo "📊 Checking build..."
+npm run build
 cd ..
 
 # Install server dependencies
 echo "🖥️ Installing server dependencies..."
 cd server
-npm install
-npm audit fix --force
+npm ci --prefer-offline --no-audit
 cd ..
 
 echo "✅ Dependencies reinstalled successfully!"
-echo "🚀 You can now try building with: cd client && npm run build" 
+echo "🚀 Build completed successfully!" 
