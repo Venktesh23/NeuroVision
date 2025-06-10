@@ -5,12 +5,6 @@ set -e  # Exit on any error
 
 echo "🚀 Starting NeuroVision build process..."
 
-# Set environment variables to suppress warnings
-export DISABLE_ESLINT_PLUGIN=true
-export GENERATE_SOURCEMAP=false
-export CI=true
-export SKIP_PREFLIGHT_CHECK=true
-
 # Check Node.js version
 echo "📋 Checking Node.js version..."
 node --version
@@ -19,14 +13,11 @@ npm --version
 # Navigate to client directory
 cd client
 
-echo "📦 Installing dependencies..."
-npm ci --prefer-offline --no-audit
+echo "🧹 Cleaning npm cache..."
+npm cache clean --force
 
-echo "🔍 Checking for vulnerabilities..."
-if ! npm audit --audit-level=high; then
-    echo "⚠️ High vulnerabilities found, attempting to fix..."
-    npm audit fix --force || echo "⚠️ Some vulnerabilities could not be fixed automatically"
-fi
+echo "📦 Installing dependencies..."
+npm install --legacy-peer-deps --no-fund
 
 echo "🔧 Building React application..."
 npm run build

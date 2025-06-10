@@ -25,15 +25,15 @@ echo "⬇️ Installing fresh dependencies..."
 # Install client dependencies
 echo "📱 Installing client dependencies..."
 cd client
-npm ci --prefer-offline --no-audit
-echo "📊 Checking build..."
+npm install --legacy-peer-deps --no-fund
+echo "📊 Testing build..."
 npm run build
 cd ..
 
 # Install server dependencies
 echo "🖥️ Installing server dependencies..."
 cd server
-npm ci --prefer-offline --no-audit
+npm install --legacy-peer-deps --no-fund
 cd ..
 
 echo "✅ Dependencies reinstalled successfully!"
