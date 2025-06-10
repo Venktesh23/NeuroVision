@@ -107,7 +107,7 @@ const PoseDetection = ({ webcamRef, isDetecting, onResults, onMetricsUpdate }) =
       }
       // We don't stop the camera here since FaceMeshDetection manages it
     };
-  }, [webcamRef, onResults, onMetricsUpdate, camera, isDetecting, scriptsLoaded]);
+  }, [webcamRef, onResults, onMetricsUpdate, camera, isDetecting, scriptsLoaded, pose]);
   
   useEffect(() => {
     if (camera && isDetecting) {

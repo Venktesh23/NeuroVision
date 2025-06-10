@@ -102,7 +102,7 @@ const FaceMeshDetection = ({ webcamRef, isDetecting, onResults, onMetricsUpdate 
         camera.stop();
       }
     };
-  }, [webcamRef, onResults, onMetricsUpdate, isDetecting, scriptsLoaded]);
+  }, [webcamRef, onResults, onMetricsUpdate, isDetecting, scriptsLoaded, camera, faceMesh]);
   
   useEffect(() => {
     if (camera && isDetecting) {
