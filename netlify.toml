@@ -6,6 +6,9 @@
 [build.environment]
   NODE_VERSION = "18.20.0"
   NPM_CONFIG_FUND = "false"
+  REACT_APP_DEMO_MODE = "true"
+  REACT_APP_ENVIRONMENT = "production"
+  REACT_APP_DEBUG = "false"
 
 [[redirects]]
   from = "/*"

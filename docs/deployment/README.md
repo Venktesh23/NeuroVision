@@ -1,41 +1,84 @@
-# Deployment Documentation
-
-This folder contains all deployment-related documentation and guides for the NeuroVision project.
-
-## 📁 Documentation Files
-
-### Main Guides
-- **[NETLIFY_DEPLOYMENT.md](./NETLIFY_DEPLOYMENT.md)** - Original Netlify deployment guide
-- **[FINAL_NETLIFY_FIX.md](./FINAL_NETLIFY_FIX.md)** - Final working deployment configuration
-- **[ESLINT_FIXES.md](./ESLINT_FIXES.md)** - ESLint build failure fixes
-
-### Troubleshooting
-- **[BUILD_TROUBLESHOOTING.md](./BUILD_TROUBLESHOOTING.md)** - Comprehensive build troubleshooting
-- **[NETLIFY_FIX.md](./NETLIFY_FIX.md)** - Earlier Netlify configuration attempts
-- **[PACKAGE_UPDATES.md](./PACKAGE_UPDATES.md)** - Package deprecation fixes
-
-## 🛠️ Scripts
-
-Scripts have been moved to the `scripts/` folder:
-- **[build.sh](../../scripts/build.sh)** - Local build testing script
-- **[clean-install.sh](../../scripts/clean-install.sh)** - Clean dependency installation
-
-## 📋 Configuration Files (Root Directory)
-
-These files must remain in the root directory:
-- **netlify.toml** - Netlify build configuration
-- **.nvmrc** - Node.js version specification
-- **.npmrc** - npm configuration
-- **package.json** - Workspace configuration
+# NeuroVision Deployment Documentation
 
 ## 🚀 Quick Start
 
-1. **For local testing**: Run `./scripts/build.sh`
-2. **For clean install**: Run `./scripts/clean-install.sh`
-3. **For deployment**: Push to GitHub (auto-deploys via Netlify)
+The application is now deployed with **Demo Mode** enabled for immediate use without backend dependencies.
 
-## 📖 Recommended Reading Order
+### Current Status
+- ✅ **Frontend**: Deployed on Netlify with demo mode
+- ✅ **Authentication**: Works in demo mode (`demo@neurovision.com` / `demo123`)
+- ✅ **All Features**: Functional using local processing
+- ⚠️ **Data Persistence**: Not available in demo mode
 
-1. Start with [FINAL_NETLIFY_FIX.md](./FINAL_NETLIFY_FIX.md) for current working config
-2. Check [ESLINT_FIXES.md](./ESLINT_FIXES.md) for recent fixes
-3. Use [BUILD_TROUBLESHOOTING.md](./BUILD_TROUBLESHOOTING.md) if issues arise 
+## 📋 Available Documentation
+
+### Primary Guides
+- **[Authentication Solutions](./AUTHENTICATION_SOLUTION.md)** - Complete authentication setup guide
+- **[Package Updates](./PACKAGE_UPDATES.md)** - Dependency management and Chart.js migration
+- **[Build Troubleshooting](./BUILD_TROUBLESHOOTING.md)** - Common build issues and solutions
+
+### Historical Fixes (Reference Only)
+- **[ESLint Fixes](./ESLINT_FIXES.md)** - ESLint configuration and error resolution
+- **[Netlify Deployment](./NETLIFY_DEPLOYMENT.md)** - Initial deployment setup
+- **[Final Netlify Fix](./FINAL_NETLIFY_FIX.md)** - Final production configuration
+
+## 🎯 Current Deployment Configuration
+
+### Production Setup
+```toml
+# netlify.toml
+[build]
+  base = "client"
+  publish = "build"
+  command = "npm cache clean --force && npm install --legacy-peer-deps --no-fund && CI=false npm run build"
+
+[build.environment]
+  NODE_VERSION = "18.20.0"
+  REACT_APP_DEMO_MODE = "true"
+  REACT_APP_ENVIRONMENT = "production"
+```
+
+### Demo Mode Features
+- Automatic backend detection
+- Local authentication simulation
+- Client-side data processing
+- MediaPipe-based neurological assessments
+- Clear user notifications about demo limitations
+
+## 🔄 Next Steps
+
+### For Demo/Showcase Use
+✅ **Ready to use** - No additional setup required
+
+### For Production Use
+1. **Deploy Backend**: Use Render, Railway, or Netlify Functions
+2. **Configure Database**: Set up MongoDB Atlas
+3. **Update Environment**: Change `REACT_APP_DEMO_MODE=false`
+4. **Redeploy Frontend**: Update with backend URL
+
+## 🛠️ Development
+
+### Local Development
+```bash
+# Frontend only (demo mode)
+cd client && npm start
+
+# Full stack development
+cd server && npm start  # Terminal 1
+cd client && npm start  # Terminal 2
+```
+
+### Build Scripts
+See [scripts/README.md](../../scripts/README.md) for available build utilities.
+
+## 📞 Support
+
+For deployment issues:
+1. Check the specific guide in this directory
+2. Review build logs in Netlify dashboard
+3. Test locally with demo mode: `REACT_APP_DEMO_MODE=true npm start`
+
+---
+
+**Last Updated**: Latest deployment with demo mode authentication
+**Status**: ✅ Production Ready (Demo Mode) 
