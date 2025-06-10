@@ -2,6 +2,8 @@
 
 NeuroVision is an advanced AI-powered stroke detection platform that combines cutting-edge technologies to provide real-time health monitoring and early warning signs of stroke. By analyzing facial asymmetry, posture anomalies, and speech patterns, the system offers comprehensive stroke risk assessment.
 
+> 📁 **New Organization**: Deployment documentation moved to [`docs/deployment/`](./docs/deployment/), build scripts moved to [`scripts/`](./scripts/). See [docs/deployment/README.md](./docs/deployment/README.md) for deployment guides.
+
 ## Features
 
 - **Real-time Facial Asymmetry Detection**: Uses MediaPipe Face Mesh to detect subtle changes in facial symmetry that may indicate stroke.
@@ -37,7 +39,11 @@ cd stroke-shield-main
 
 **Quick Start** (Automated setup):
 ```bash
-./scripts/dev.sh
+# Clean install and build test
+./scripts/clean-install.sh
+
+# Local build testing
+./scripts/build.sh
 ```
 
 **Manual Setup**:
