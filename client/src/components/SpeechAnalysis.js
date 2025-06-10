@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ApiService from "../utils/apiService";
 
@@ -15,102 +15,41 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
   });
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [currentPassage, setCurrentPassage] = useState('');
+  const [isSupported, setIsSupported] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [error, setError] = useState(null);
   
   const recognitionRef = useRef(null);
 
-  // Reading passages for speech analysis
-  const readingPassages = [
+  // Memoize reading passages to prevent recreation on every render
+  const readingPassages = useMemo(() => [
     "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet and helps evaluate speech clarity and pronunciation accuracy.",
     "Peter Piper picked a peck of pickled peppers. This tongue twister tests articulation, coordination, and speech fluency under challenging phonetic conditions.",
     "She sells seashells by the seashore. The shells she sells are surely seashells. This phrase evaluates sibilant sound production and speech rhythm.",
     "Around the rugged rock the ragged rascal ran. This alliterative sentence challenges pronunciation and tests for speech impediments or difficulties.",
-    "Red leather, yellow leather. Betty Botter bought some butter. These phrases test rapid speech transitions and articulatory precision.",
-    "How much wood would a woodchuck chuck if a woodchuck could chuck wood? This classic tests speech flow and cognitive-linguistic coordination.",
-    "Unique New York, unique New York. You know you need unique New York. This phrase challenges vowel differentiation and speech clarity.",
-    "Toy boat, toy boat, toy boat. The sixth sick sheik's sixth sheep's sick. These test rapid repetition and complex consonant combinations.",
-    "Can you can a can as a canner can can a can? This tests speech planning, execution, and the ability to manage complex sentence structures.",
-    "Six thick thistle sticks, six thick thistles stick. This phrase evaluates fricative sound production and articulatory coordination."
-  ];
+    "Red leather, yellow leather. Betty Botter bought some butter. These phrases test rapid speech transitions and articulatory precision."
+  ], []);
 
-  // Initialize speech recognition
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onstart = () => {
-        setIsRecording(true);
-        setRecordingStatus("Listening... Please read the passage above.");
-      };
-
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          }
-        }
-        if (finalTranscript) {
-          setTranscript(prev => prev + finalTranscript);
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-        if (transcript.trim()) {
-          analyzeSpeech(transcript);
-        } else {
-          setRecordingStatus("No speech detected. Please try again.");
-        }
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        setIsRecording(false);
-        setRecordingStatus(`Recording error: ${event.error}. Please try again.`);
-      };
-    } else {
-      setRecordingStatus("Speech recognition not supported in this browser. Please use Chrome or Safari.");
+  // Fetch recent speech analyses
+  const fetchRecentSpeechAnalyses = useCallback(async () => {
+    try {
+      const data = await ApiService.getRecentSpeechAnalyses();
+      setRecentAnalyses(data);
+    } catch (error) {
+      console.warn('Error fetching recent speech analyses:', error);
+      // Don't show error to user for this non-critical operation
     }
-
-    // Set initial random passage
-    setRandomPassage();
-    fetchRecentSpeechAnalyses();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Set random reading passage
-  const setRandomPassage = () => {
-    const randomIndex = Math.floor(Math.random() * readingPassages.length);
-    setCurrentPassage(readingPassages[randomIndex]);
-  };
-  
-  // Start recording
-  const startRecording = () => {
-    if (recognitionRef.current) {
-      setTranscript('');
-      recognitionRef.current.start();
-    }
-  };
-  
-  // Stop recording
-  const stopRecording = () => {
-    if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop();
-    }
-  };
-  
   // Analyze speech through backend API
-  const analyzeSpeech = async (speechTranscript) => {
+  const analyzeSpeech = useCallback(async (speechTranscript) => {
     setRecordingStatus("Analyzing speech patterns...");
     
     try {
       const data = await ApiService.analyzeSpeech(speechTranscript, currentPassage);
       setSpeechMetrics(data);
       setRecordingStatus("Analysis complete.");
+      setError(null);
       
       // Update parent component with speech metrics
       if (onSpeechMetricsUpdate) {
@@ -122,19 +61,155 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       
     } catch (error) {
       console.error('Error analyzing speech:', error);
-      setRecordingStatus("Error analyzing speech. Please try again.");
+      const errorMsg = error.message || 'Error analyzing speech. Please try again.';
+      setRecordingStatus(errorMsg);
+      setError(errorMsg);
     }
-  };
-  
-  // Fetch recent speech analyses
-  const fetchRecentSpeechAnalyses = async () => {
+  }, [currentPassage, onSpeechMetricsUpdate, fetchRecentSpeechAnalyses]);
+
+  // Check browser support and initialize
+  const initializeSpeechRecognition = useCallback(() => {
     try {
-      const data = await ApiService.getRecentSpeechAnalyses();
-      setRecentAnalyses(data);
-    } catch (error) {
-      console.error('Error fetching recent speech analyses:', error);
+      setIsInitializing(true);
+      setError(null);
+
+      // Check if speech recognition is supported
+      if (typeof window === 'undefined') {
+        throw new Error('Speech recognition requires a browser environment');
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        throw new Error('Speech recognition not supported in this browser. Please use Chrome, Safari, or Edge.');
+      }
+
+      // Initialize recognition
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+        setIsRecording(true);
+        setRecordingStatus("Listening... Please read the passage above clearly.");
+        setError(null);
+      };
+
+      recognition.onresult = (event) => {
+        try {
+          let finalTranscript = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcriptPart = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcriptPart + ' ';
+            }
+          }
+          
+          if (finalTranscript) {
+            setTranscript(prev => prev + finalTranscript);
+          }
+        } catch (err) {
+          console.error('Error processing speech results:', err);
+        }
+      };
+
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+        setIsRecording(false);
+        const finalTranscript = transcript.trim();
+        if (finalTranscript && finalTranscript.length > 5) {
+          analyzeSpeech(finalTranscript);
+        } else {
+          setRecordingStatus("No speech detected or speech too short. Please try again with at least a few words.");
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        
+        let errorMessage = 'Recording error: ';
+        switch (event.error) {
+          case 'no-speech':
+            errorMessage += 'No speech detected. Please speak clearly and try again.';
+            break;
+          case 'audio-capture':
+            errorMessage += 'Microphone not accessible. Please check permissions.';
+            break;
+          case 'not-allowed':
+            errorMessage += 'Microphone permission denied. Please allow microphone access.';
+            break;
+          case 'network':
+            errorMessage += 'Network error. Please check your connection.';
+            break;
+          default:
+            errorMessage += `${event.error}. Please try again.`;
+        }
+        
+        setRecordingStatus(errorMessage);
+        setError(errorMessage);
+      };
+
+      recognitionRef.current = recognition;
+      setIsSupported(true);
+      setIsInitializing(false);
+      setRecordingStatus('Ready for speech analysis. Click "Start Recording" to begin.');
+
+    } catch (err) {
+      console.error('Failed to initialize speech recognition:', err);
+      setIsSupported(false);
+      setIsInitializing(false);
+      setError(err.message);
+      setRecordingStatus(err.message);
     }
-  };
+  }, [transcript, analyzeSpeech]);
+
+  // Set random reading passage
+  const setRandomPassage = useCallback(() => {
+    const randomIndex = Math.floor(Math.random() * readingPassages.length);
+    setCurrentPassage(readingPassages[randomIndex]);
+  }, [readingPassages]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    initializeSpeechRecognition();
+    setRandomPassage();
+    fetchRecentSpeechAnalyses();
+  }, [initializeSpeechRecognition, setRandomPassage, fetchRecentSpeechAnalyses]);
+  
+  // Start recording
+  const startRecording = useCallback(() => {
+    if (!recognitionRef.current || !isSupported) {
+      setError('Speech recognition not available');
+      return;
+    }
+
+    try {
+      setTranscript('');
+      setError(null);
+      recognitionRef.current.start();
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+      setError('Failed to start recording. Please try again.');
+      setRecordingStatus('Failed to start recording. Please try again.');
+    }
+  }, [isSupported]);
+  
+  // Stop recording
+  const stopRecording = useCallback(() => {
+    if (recognitionRef.current && isRecording) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error('Failed to stop recording:', err);
+        setIsRecording(false);
+      }
+    }
+  }, [isRecording]);
   
   // Get risk level color
   const getRiskColor = (risk) => {
@@ -166,6 +241,60 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
     initial: { opacity: 0, scale: 0.95 },
     animate: { opacity: 1, scale: 1, transition: { duration: 0.4 } }
   };
+
+  // Show initialization loading
+  if (isInitializing) {
+    return (
+      <motion.div 
+        className="bg-white rounded-xl shadow-xl p-8 border border-gray-100"
+        variants={containerVariants}
+        initial="initial"
+        animate="animate"
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing speech recognition...</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Show error state if not supported
+  if (!isSupported) {
+    return (
+      <motion.div 
+        className="bg-white rounded-xl shadow-xl p-8 border border-gray-100"
+        variants={containerVariants}
+        initial="initial"
+        animate="animate"
+      >
+        <h2 className="text-3xl font-black mb-6 text-gray-800">Speech Analysis System</h2>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="mb-4">
+            <svg className="w-12 h-12 mx-auto text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Speech Recognition Not Available</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <div className="text-sm text-red-600">
+            <p>Supported browsers:</p>
+            <ul className="list-disc list-inside mt-2">
+              <li>Google Chrome (recommended)</li>
+              <li>Microsoft Edge</li>
+              <li>Safari (iOS/macOS)</li>
+            </ul>
+          </div>
+          <button
+            onClick={initializeSpeechRecognition}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
   
   return (
     <motion.div 
@@ -183,6 +312,31 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
         Speech Analysis System
       </motion.h2>
       
+      {/* Error display */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4"
+          >
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-800 text-sm">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                ×
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Recording Controls */}
       <motion.div 
         className="mb-8"
@@ -196,12 +350,12 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
         <div className="mb-6">
           <motion.button
             onClick={startRecording}
-            disabled={isRecording}
+            disabled={isRecording || !isSupported}
             className="px-8 py-4 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed mr-4 shadow-lg transition-all duration-300"
-            whileHover={!isRecording ? { scale: 1.05 } : {}}
-            whileTap={!isRecording ? { scale: 0.95 } : {}}
+            whileHover={!isRecording && isSupported ? { scale: 1.05 } : {}}
+            whileTap={!isRecording && isSupported ? { scale: 0.95 } : {}}
           >
-            START RECORDING
+            {isRecording ? 'RECORDING...' : 'START RECORDING'}
           </motion.button>
           <motion.button
             onClick={stopRecording}
@@ -220,8 +374,16 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
           animate={{ scale: isRecording ? [1, 1.02, 1] : 1 }}
           transition={{ repeat: isRecording ? Infinity : 0, duration: 2 }}
         >
-          <div className={`p-4 rounded-xl border-2 ${isRecording ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-300'}`}>
-            <p className={`text-sm font-semibold ${isRecording ? 'text-red-700' : 'text-gray-700'}`}>
+          <div className={`p-4 rounded-xl border-2 ${
+            error ? 'bg-red-50 border-red-300' :
+            isRecording ? 'bg-emerald-50 border-emerald-300' : 
+            'bg-gray-50 border-gray-300'
+          }`}>
+            <p className={`text-sm font-semibold ${
+              error ? 'text-red-700' :
+              isRecording ? 'text-emerald-700' : 
+              'text-gray-700'
+            }`}>
               {recordingStatus}
             </p>
           </div>

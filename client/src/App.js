@@ -1,14 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "./components/Webcam";
 import DetectionView from "./components/DetectionView";
 import ResultsPanel from "./components/ResultsPanel";
-import SpeechAnalysis from "./components/SpeechAnalysis";
-import HistoricalData from "./components/HistoricalData";
 import InstructionsPanel from "./components/InstructionsPanel";
-import FaceMeshDetection from "./components/FaceMeshDetection";
-import PoseDetection from "./components/PoseDetection";
-import StrokeAssessment from "./components/StrokeAssessment";
 import ErrorBoundary, { withErrorBoundary } from "./components/ErrorBoundary";
 import { LoadingButton, CameraLoader } from "./components/LoadingStates";
 import ApiService from "./utils/apiService";
@@ -16,9 +11,42 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './components/Auth/AuthPage';
 import UserProfile from './components/UserProfile';
 
+// Lazy load heavy components
+const SpeechAnalysis = lazy(() => import("./components/SpeechAnalysis"));
+const HistoricalData = lazy(() => import("./components/HistoricalData"));
+const FaceMeshDetection = lazy(() => import("./components/FaceMeshDetection"));
+const PoseDetection = lazy(() => import("./components/PoseDetection"));
+const StrokeAssessment = lazy(() => import("./components/StrokeAssessment"));
+
+// Loading component for lazy-loaded components
+const ComponentLoader = ({ children }) => (
+  <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading component...</p>
+    </div>
+  </div>
+);
+
 // Wrap critical components with error boundaries
-const SafeSpeechAnalysis = withErrorBoundary(SpeechAnalysis, "SpeechAnalysis");
-const SafeHistoricalData = withErrorBoundary(HistoricalData, "HistoricalData");
+const SafeSpeechAnalysis = withErrorBoundary(
+  (props) => (
+    <Suspense fallback={<ComponentLoader />}>
+      <SpeechAnalysis {...props} />
+    </Suspense>
+  ), 
+  "SpeechAnalysis"
+);
+
+const SafeHistoricalData = withErrorBoundary(
+  (props) => (
+    <Suspense fallback={<ComponentLoader />}>
+      <HistoricalData {...props} />
+    </Suspense>
+  ), 
+  "HistoricalData"
+);
+
 const SafeResultsPanel = withErrorBoundary(ResultsPanel, "ResultsPanel");
 const SafeDetectionView = withErrorBoundary(DetectionView, "DetectionView");
 
@@ -386,19 +414,13 @@ const AuthenticatedApp = () => {
                       <div className="mt-4 grid grid-cols-2 gap-6 text-sm">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-gray-700">Face Detection:</span>
-                          <span 
-                            className={`font-bold ${faceMeshResults ? 'text-emerald-600' : 'text-gray-400'}`}
-                            aria-label={`Face detection is ${faceMeshResults ? 'active' : 'inactive'}`}
-                          >
+                          <span className={faceMeshResults ? 'text-emerald-600 font-bold' : 'text-gray-400'}>
                             {faceMeshResults ? 'ACTIVE' : 'INACTIVE'}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-gray-700">Pose Detection:</span>
-                          <span 
-                            className={`font-bold ${poseResults ? 'text-emerald-600' : 'text-gray-400'}`}
-                            aria-label={`Pose detection is ${poseResults ? 'active' : 'inactive'}`}
-                          >
+                          <span className={poseResults ? 'text-emerald-600 font-bold' : 'text-gray-400'}>
                             {poseResults ? 'ACTIVE' : 'INACTIVE'}
                           </span>
                         </div>
@@ -406,35 +428,49 @@ const AuthenticatedApp = () => {
                     </motion.div>
                   </motion.div>
                 </ErrorBoundary>
-
-                {/* Results Panel */}
-                <motion.div
-                  variants={tabVariants}
-                  initial="initial"
-                  animate="animate"
-                  transition={{ delay: 0.2 }}
-                >
-                  <SafeResultsPanel
-                    asymmetryMetrics={asymmetryMetrics}
-                    postureMetrics={postureMetrics}
-                    riskLevel={riskLevel}
-                    assessmentFindings={assessmentFindings}
-                  />
-                </motion.div>
+                
+                {/* Real-time Analysis Components - Only load when detecting */}
+                {isDetecting && (
+                  <ErrorBoundary componentName="Real-time Analysis">
+                    <Suspense fallback={<ComponentLoader />}>
+                      <FaceMeshDetection
+                        webcamRef={webcamRef}
+                        isDetecting={isDetecting}
+                        onResults={setFaceMeshResults}
+                        onMetricsUpdate={setAsymmetryMetrics}
+                      />
+                      <PoseDetection
+                        webcamRef={webcamRef}
+                        isDetecting={isDetecting}
+                        onResults={setPoseResults}
+                        onMetricsUpdate={setPostureMetrics}
+                      />
+                      <StrokeAssessment
+                        asymmetryMetrics={asymmetryMetrics}
+                        postureMetrics={postureMetrics}
+                        speechMetrics={speechMetrics}
+                        onRiskLevelUpdate={setRiskLevel}
+                        onFindingsUpdate={setAssessmentFindings}
+                      />
+                    </Suspense>
+                  </ErrorBoundary>
+                )}
               </div>
 
-              {/* Instructions Panel */}
-              <motion.div 
-                className="lg:col-span-1"
-                variants={tabVariants}
-                initial="initial"
-                animate="animate"
-                transition={{ delay: 0.3 }}
-              >
+              {/* Results Panel */}
+              <div className="space-y-8">
+                <SafeResultsPanel
+                  asymmetryMetrics={asymmetryMetrics}
+                  postureMetrics={postureMetrics}
+                  speechMetrics={speechMetrics}
+                  riskLevel={riskLevel}
+                  assessmentFindings={assessmentFindings}
+                />
+                
                 <ErrorBoundary componentName="Instructions Panel">
                   <InstructionsPanel />
                 </ErrorBoundary>
-              </motion.div>
+              </div>
             </motion.div>
           )}
 
@@ -442,7 +478,6 @@ const AuthenticatedApp = () => {
           {activeTab === "speech" && (
             <motion.div 
               key="speech"
-              className="max-w-5xl mx-auto"
               variants={containerVariants}
               initial="initial"
               animate="animate"
@@ -455,11 +490,10 @@ const AuthenticatedApp = () => {
             </motion.div>
           )}
 
-          {/* History Tab */}
+          {/* Assessment History Tab */}
           {activeTab === "history" && (
             <motion.div 
               key="history"
-              className="max-w-5xl mx-auto"
               variants={containerVariants}
               initial="initial"
               animate="animate"
@@ -472,11 +506,10 @@ const AuthenticatedApp = () => {
             </motion.div>
           )}
 
-          {/* Add Profile Tab */}
+          {/* User Profile Tab */}
           {activeTab === "profile" && (
             <motion.div 
               key="profile"
-              className="max-w-2xl mx-auto"
               variants={containerVariants}
               initial="initial"
               animate="animate"
@@ -485,69 +518,46 @@ const AuthenticatedApp = () => {
               id="profile-panel"
               aria-labelledby="profile-tab"
             >
-              <UserProfile />
+              <ErrorBoundary componentName="User Profile">
+                <UserProfile />
+              </ErrorBoundary>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
-
-      {/* Hidden components for detection logic */}
-      <ErrorBoundary componentName="Face Mesh Detection">
-        <FaceMeshDetection
-          webcamRef={webcamRef}
-          isDetecting={isDetecting}
-          onResults={setFaceMeshResults}
-          onMetricsUpdate={setAsymmetryMetrics}
-        />
-      </ErrorBoundary>
-      <ErrorBoundary componentName="Pose Detection">
-        <PoseDetection
-          webcamRef={webcamRef}
-          isDetecting={isDetecting}
-          onResults={setPoseResults}
-          onMetricsUpdate={setPostureMetrics}
-        />
-      </ErrorBoundary>
-      <ErrorBoundary componentName="Stroke Assessment">
-        <StrokeAssessment
-          asymmetryMetrics={asymmetryMetrics}
-          postureMetrics={postureMetrics}
-          onRiskUpdate={setRiskLevel}
-          onFindingsUpdate={setAssessmentFindings}
-        />
-      </ErrorBoundary>
     </div>
   );
 };
 
-// Main App wrapper with authentication
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary componentName="Main Application">
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
-// App content that checks authentication
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <motion.div
-          className="text-white text-xl font-bold"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          Loading NeuroVision...
-        </motion.div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading NeuroVision...</p>
+        </div>
       </div>
     );
   }
 
-  return isAuthenticated ? <AuthenticatedApp /> : <AuthPage />;
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
+
+  return <AuthenticatedApp />;
 };
 
 export default App;
