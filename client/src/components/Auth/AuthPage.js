@@ -114,15 +114,7 @@ const AuthPage = () => {
           </AnimatePresence>
         </motion.div>
 
-        {/* Footer */}
-        <motion.div 
-          className="text-center mt-8 text-gray-400 text-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-        >
-          <p>Secure • Private • HIPAA Compliant</p>
-        </motion.div>
+
       </motion.div>
     </div>
   );

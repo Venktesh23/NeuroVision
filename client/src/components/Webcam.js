@@ -22,8 +22,8 @@ const Webcam = forwardRef(({ isDetecting }, ref) => {
         
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 640, max: 1280 },
-            height: { ideal: 480, max: 720 },
+            width: { ideal: 640, min: 320, max: 1280 },
+            height: { ideal: 480, min: 240, max: 720 },
             facingMode: 'user',
             frameRate: { ideal: 30, max: 30 }
           }
@@ -69,8 +69,7 @@ const Webcam = forwardRef(({ isDetecting }, ref) => {
       if (currentVideoRef && currentVideoRef.srcObject) {
         const tracks = currentVideoRef.srcObject.getTracks();
         tracks.forEach(track => {
-          track.stop();
-          console.log('Camera track stopped:', track.kind);
+                  track.stop();
         });
         currentVideoRef.srcObject = null;
       }
@@ -101,17 +100,16 @@ const Webcam = forwardRef(({ isDetecting }, ref) => {
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
       <video
         ref={ref}
         autoPlay
         playsInline
         muted
-        className="w-full h-auto rounded object-cover"
+        className="w-full h-full object-contain"
         style={{ 
-          maxHeight: '480px',
-          backgroundColor: '#000',
-          display: error ? 'none' : 'block'
+          display: error ? 'none' : 'block',
+          backgroundColor: '#000'
         }}
       />
       

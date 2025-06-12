@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ApiService from '../utils/apiService';
 import { useAuth } from '../contexts/AuthContext';
+import { HistorySkeletonLoader, LoadingError } from './LoadingStates';
 
 const HistoricalData = () => {
   const [recentAssessments, setRecentAssessments] = useState([]);
@@ -16,7 +17,7 @@ const HistoricalData = () => {
   const fetchRecentAssessments = async () => {
     try {
       setLoading(true);
-      const data = await ApiService.getUserAssessmentHistory(20);
+      const data = await ApiService.getRecentAssessments(20);
       setRecentAssessments(data);
       setError(null);
     } catch (err) {
@@ -27,8 +28,8 @@ const HistoricalData = () => {
     }
   };
 
-  const getRiskColor = (riskLevel) => {
-    switch (riskLevel?.toLowerCase()) {
+  const getRiskColor = (risk) => {
+    switch (risk?.toLowerCase()) {
       case 'low': return 'text-emerald-600 bg-emerald-100 border-emerald-300';
       case 'medium': return 'text-amber-600 bg-amber-100 border-amber-300';
       case 'high': return 'text-red-600 bg-red-100 border-red-300';
@@ -55,19 +56,13 @@ const HistoricalData = () => {
   if (loading) {
     return (
       <motion.div 
-        className="bg-white rounded-xl shadow-xl p-8 border border-gray-100"
+        className="bg-white rounded-xl shadow-xl p-8 border border-gray-100 transition-colors duration-300"
         variants={containerVariants}
         initial="initial"
         animate="animate"
       >
         <h2 className="text-3xl font-black mb-8 text-gray-800">Assessment History</h2>
-        <motion.div 
-          className="text-center text-gray-500 py-12"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        >
-          Loading historical data...
-        </motion.div>
+        <HistorySkeletonLoader />
       </motion.div>
     );
   }
@@ -75,30 +70,23 @@ const HistoricalData = () => {
   if (error) {
     return (
       <motion.div 
-        className="bg-white rounded-xl shadow-xl p-8 border border-gray-100"
+        className="bg-white rounded-xl shadow-xl p-8 border border-gray-100 transition-colors duration-300"
         variants={containerVariants}
         initial="initial"
         animate="animate"
       >
         <h2 className="text-3xl font-black mb-8 text-gray-800">Assessment History</h2>
-        <div className="text-center text-red-500 py-8">
-          <p className="mb-4 font-medium">{error}</p>
-          <motion.button 
-            onClick={fetchRecentAssessments}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            RETRY
-          </motion.button>
-        </div>
+        <LoadingError 
+          message={error}
+          onRetry={fetchRecentAssessments}
+        />
       </motion.div>
     );
   }
 
   return (
     <motion.div 
-      className="bg-white rounded-xl shadow-xl p-8 border border-gray-100"
+      className="bg-white rounded-xl shadow-xl p-8 border border-gray-100 transition-colors duration-300 hover:shadow-2xl hover:scale-[1.001] transition-all duration-300"
       variants={containerVariants}
       initial="initial"
       animate="animate"
@@ -114,8 +102,8 @@ const HistoricalData = () => {
         </motion.h2>
         <motion.button 
           onClick={fetchRecentAssessments}
-          className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-lg"
-          whileHover={{ scale: 1.05 }}
+          className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          whileHover={{ scale: 1.05, y: -1 }}
           whileTap={{ scale: 0.95 }}
         >
           REFRESH
@@ -129,9 +117,22 @@ const HistoricalData = () => {
           initial="initial"
           animate="animate"
         >
-          <div className="text-6xl mb-4">📊</div>
-          <p className="text-lg font-medium">No assessment history available for {user?.name}.</p>
-          <p className="text-sm mt-2">Complete a detection session to see your personal results here.</p>
+          <motion.div 
+            className="text-6xl mb-4"
+            animate={{ 
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0]
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          >
+            📊
+          </motion.div>
+          <p className="text-lg font-medium text-gray-600">No assessment history available for {user?.name}.</p>
+          <p className="text-sm mt-2 text-gray-500">Complete a detection session to see your personal results here.</p>
           <p className="text-xs mt-4 text-gray-400 italic">
             Note: Data persistence requires database connection
           </p>
@@ -152,12 +153,16 @@ const HistoricalData = () => {
               return (
                 <motion.div 
                   key={assessment.id || index} 
-                  className="border border-gray-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300"
+                  className="border border-gray-200 bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:shadow-glow"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.1 }}
-                  whileHover={{ scale: 1.02, y: -5 }}
+                  whileHover={{ 
+                    scale: 1.03, 
+                    y: -8,
+                    rotateX: 2
+                  }}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -166,7 +171,10 @@ const HistoricalData = () => {
                     </div>
                     <motion.span 
                       className={`px-4 py-2 rounded-full text-sm font-black border-2 shadow-md ${getRiskColor(assessment.riskLevel)}`}
-                      whileHover={{ scale: 1.1 }}
+                      whileHover={{ 
+                        scale: 1.1,
+                        boxShadow: "0 0 20px rgba(59, 130, 246, 0.3)"
+                      }}
                       transition={{ duration: 0.2 }}
                     >
                       {assessment.riskLevel?.toUpperCase() || 'UNKNOWN'}
@@ -176,8 +184,12 @@ const HistoricalData = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                     {/* Facial Asymmetry Metrics */}
                     <motion.div 
-                      className="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm"
-                      whileHover={{ scale: 1.05 }}
+                      className="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300"
+                      whileHover={{ 
+                        scale: 1.08,
+                        y: -2,
+                        boxShadow: "0 10px 25px rgba(59, 130, 246, 0.15)"
+                      }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="text-xs text-blue-700 font-bold mb-1">EYE ASYMMETRY</div>
@@ -185,8 +197,12 @@ const HistoricalData = () => {
                     </motion.div>
                     
                     <motion.div 
-                      className="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm"
-                      whileHover={{ scale: 1.05 }}
+                      className="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300"
+                      whileHover={{ 
+                        scale: 1.08,
+                        y: -2,
+                        boxShadow: "0 10px 25px rgba(59, 130, 246, 0.15)"
+                      }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="text-xs text-blue-700 font-bold mb-1">MOUTH ASYMMETRY</div>
@@ -195,8 +211,12 @@ const HistoricalData = () => {
 
                     {/* Posture Metrics */}
                     <motion.div 
-                      className="bg-purple-50 border border-purple-200 p-4 rounded-xl shadow-sm"
-                      whileHover={{ scale: 1.05 }}
+                      className="bg-purple-50 border border-purple-200 p-4 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300"
+                      whileHover={{ 
+                        scale: 1.08,
+                        y: -2,
+                        boxShadow: "0 10px 25px rgba(147, 51, 234, 0.15)"
+                      }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="text-xs text-purple-700 font-bold mb-1">SHOULDER IMBALANCE</div>
@@ -204,8 +224,12 @@ const HistoricalData = () => {
                     </motion.div>
 
                     <motion.div 
-                      className="bg-purple-50 border border-purple-200 p-4 rounded-xl shadow-sm"
-                      whileHover={{ scale: 1.05 }}
+                      className="bg-purple-50 border border-purple-200 p-4 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300"
+                      whileHover={{ 
+                        scale: 1.08,
+                        y: -2,
+                        boxShadow: "0 10px 25px rgba(147, 51, 234, 0.15)"
+                      }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="text-xs text-purple-700 font-bold mb-1">HEAD TILT</div>
@@ -216,7 +240,16 @@ const HistoricalData = () => {
                   {/* Overall Score */}
                   <div className="pt-4 border-t border-gray-200">
                     <div className="text-sm text-gray-600 font-bold mb-1">OVERALL FACIAL ASYMMETRY</div>
-                    <div className="font-black text-2xl text-gray-800">{formatMetric(assessment.asymmetryMetrics?.overallAsymmetry)}</div>
+                    <motion.div 
+                      className="font-black text-2xl text-gray-800"
+                      whileHover={{ 
+                        scale: 1.05,
+                        color: "#3b82f6"
+                      }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {formatMetric(assessment.asymmetryMetrics?.overallAsymmetry)}
+                    </motion.div>
                   </div>
                 </motion.div>
               );
@@ -236,7 +269,12 @@ const HistoricalData = () => {
           <h3 className="font-black text-xl mb-6 text-gray-800">RECENT TRENDS</h3>
           <div className="grid grid-cols-3 gap-6 text-center">
             <motion.div
-              whileHover={{ scale: 1.05 }}
+              className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 transition-all duration-300"
+              whileHover={{ 
+                scale: 1.08,
+                y: -4,
+                boxShadow: "0 10px 25px rgba(16, 185, 129, 0.15)"
+              }}
               transition={{ duration: 0.2 }}
             >
               <div className="text-4xl font-black text-emerald-600 mb-2">
@@ -245,7 +283,12 @@ const HistoricalData = () => {
               <div className="text-sm text-gray-600 font-bold">LOW RISK</div>
             </motion.div>
             <motion.div
-              whileHover={{ scale: 1.05 }}
+              className="p-4 rounded-xl bg-amber-50 border border-amber-200 transition-all duration-300"
+              whileHover={{ 
+                scale: 1.08,
+                y: -4,
+                boxShadow: "0 10px 25px rgba(245, 158, 11, 0.15)"
+              }}
               transition={{ duration: 0.2 }}
             >
               <div className="text-4xl font-black text-amber-600 mb-2">
@@ -254,7 +297,12 @@ const HistoricalData = () => {
               <div className="text-sm text-gray-600 font-bold">MEDIUM RISK</div>
             </motion.div>
             <motion.div
-              whileHover={{ scale: 1.05 }}
+              className="p-4 rounded-xl bg-red-50 border border-red-200 transition-all duration-300"
+              whileHover={{ 
+                scale: 1.08,
+                y: -4,
+                boxShadow: "0 10px 25px rgba(239, 68, 68, 0.15)"
+              }}
               transition={{ duration: 0.2 }}
             >
               <div className="text-4xl font-black text-red-600 mb-2">

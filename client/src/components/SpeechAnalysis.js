@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import ApiService from "../utils/apiService";
 
-const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
+const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [recordingStatus, setRecordingStatus] = useState('Click "Start Recording" to begin voice analysis');
@@ -15,9 +15,11 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
   });
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [currentPassage, setCurrentPassage] = useState('');
+  const [usedPassages, setUsedPassages] = useState(new Set());
   const [isSupported, setIsSupported] = useState(true);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState(null);
+  const [passageMetadata, setPassageMetadata] = useState(null);
   
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
@@ -27,14 +29,165 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
     transcriptRef.current = transcript;
   }, [transcript]);
 
-  // Memoize reading passages to prevent recreation on every render
-  const readingPassages = useMemo(() => [
-    "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet and helps evaluate speech clarity and pronunciation accuracy.",
-    "Peter Piper picked a peck of pickled peppers. This tongue twister tests articulation, coordination, and speech fluency under challenging phonetic conditions.",
-    "She sells seashells by the seashore. The shells she sells are surely seashells. This phrase evaluates sibilant sound production and speech rhythm.",
-    "Around the rugged rock the ragged rascal ran. This alliterative sentence challenges pronunciation and tests for speech impediments or difficulties.",
-    "Red leather, yellow leather. Betty Botter bought some butter. These phrases test rapid speech transitions and articulatory precision."
-  ], []);
+  // Comprehensive medical-grade speech assessment passages
+  const speechPassageBank = useMemo(() => {
+    return {
+      // Neurological Assessment Passages (Focus on articulation, motor control)
+      neurological: [
+        {
+          id: 'neuro_1',
+          difficulty: 'medium',
+          text: "Today is Thursday, the thirtieth of November. The weather is warm and wonderful. Please remember to take your medication as prescribed by your doctor.",
+          focus: ['articulation', 'memory', 'temporal_awareness'],
+          medicalTerms: ['medication', 'prescribed', 'doctor']
+        },
+        {
+          id: 'neuro_2', 
+          difficulty: 'medium',
+          text: "The patient complained of persistent headaches and dizziness. The physician recommended immediate medical attention and proper hydration.",
+          focus: ['medical_terminology', 'complex_sentences', 'pronunciation'],
+          medicalTerms: ['patient', 'persistent', 'physician', 'medical']
+        },
+        {
+          id: 'neuro_3',
+          difficulty: 'hard',
+          text: "Neurological examination revealed asymmetrical facial expressions. The assessment indicated potential cerebrovascular complications requiring urgent intervention.",
+          focus: ['medical_complexity', 'multisyllabic_words', 'technical_pronunciation'],
+          medicalTerms: ['neurological', 'asymmetrical', 'cerebrovascular', 'intervention']
+        }
+      ],
+
+      // Cognitive Assessment Passages (Focus on comprehension, sequence)
+      cognitive: [
+        {
+          id: 'cog_1',
+          difficulty: 'easy',
+          text: "First, wash your hands with soap and water. Next, dry them with a clean towel. Finally, apply hand sanitizer for extra protection.",
+          focus: ['sequencing', 'instructions', 'simple_commands'],
+          medicalTerms: ['sanitizer', 'protection']
+        },
+        {
+          id: 'cog_2',
+          difficulty: 'medium', 
+          text: "Emergency procedures require clear communication between healthcare providers. Accurate documentation ensures proper patient care and safety protocols.",
+          focus: ['professional_vocabulary', 'complex_concepts', 'healthcare_context'],
+          medicalTerms: ['emergency', 'healthcare', 'documentation', 'protocols']
+        },
+        {
+          id: 'cog_3',
+          difficulty: 'hard',
+          text: "Pharmacological interventions must be administered according to established therapeutic guidelines. Contraindications and adverse reactions should be monitored continuously.",
+          focus: ['pharmaceutical_terminology', 'complex_grammar', 'medical_precision'],
+          medicalTerms: ['pharmacological', 'therapeutic', 'contraindications', 'adverse']
+        }
+      ],
+
+      // Motor Speech Assessment (Focus on coordination, rhythm)
+      motor: [
+        {
+          id: 'motor_1',
+          difficulty: 'medium',
+          text: "Breathe deeply and speak slowly. Articulate each syllable clearly. Maintain steady rhythm throughout your speech.",
+          focus: ['breath_control', 'rhythm', 'articulation'],
+          medicalTerms: ['articulate', 'syllable']
+        },
+        {
+          id: 'motor_2',
+          difficulty: 'hard',
+          text: "Rapid alternating movements require precise coordination. Practice purposeful patterns to improve articulatory precision and phonetic accuracy.",
+          focus: ['rapid_speech', 'coordination', 'precision'],
+          medicalTerms: ['coordination', 'articulatory', 'phonetic']
+        },
+        {
+          id: 'motor_3',
+          difficulty: 'expert',
+          text: "Supraglottal articulation involves intricate muscular coordination. Laryngeal adjustments affect vocal quality and respiratory synchronization during speech production.",
+          focus: ['technical_anatomy', 'complex_coordination', 'respiratory_control'],
+          medicalTerms: ['supraglottal', 'laryngeal', 'synchronization']
+        }
+      ],
+
+      // Current Events & Spontaneous Speech
+      spontaneous: [
+        {
+          id: 'spont_1',
+          difficulty: 'easy',
+          text: "Describe your morning routine and how you prepare for important appointments. Include details about breakfast and travel arrangements.",
+          focus: ['spontaneous_speech', 'narrative', 'personal_details'],
+          medicalTerms: ['routine', 'appointments']
+        },
+        {
+          id: 'spont_2',
+          difficulty: 'medium',
+          text: "Explain the importance of regular medical checkups. Discuss how preventive care can identify health issues before they become serious problems.",
+          focus: ['explanatory_speech', 'health_concepts', 'reasoning'],
+          medicalTerms: ['medical', 'preventive', 'identify']
+        }
+      ],
+
+      // Emotional & Stress Testing
+      emotional: [
+        {
+          id: 'emot_1',
+          difficulty: 'medium',
+          text: "During stressful situations, it's important to remain calm and communicate clearly. Practice deep breathing exercises to maintain composure.",
+          focus: ['stress_response', 'emotional_control', 'coping_strategies'],
+          medicalTerms: ['stressful', 'communicate', 'exercises']
+        },
+        {
+          id: 'emot_2',
+          difficulty: 'hard',
+          text: "Anxiety can significantly impact speech patterns and cognitive performance. Therapeutic interventions help patients develop effective coping mechanisms.",
+          focus: ['emotional_vocabulary', 'psychological_concepts', 'therapeutic_language'],
+          medicalTerms: ['anxiety', 'cognitive', 'therapeutic', 'mechanisms']
+        }
+      ]
+    };
+  }, []);
+
+  // Get a new passage avoiding recently used ones
+  const generateNewPassage = useCallback(() => {
+    const allCategories = Object.keys(speechPassageBank);
+    const availablePassages = [];
+    
+    // Collect all passages that haven't been used recently
+    allCategories.forEach(category => {
+      speechPassageBank[category].forEach(passage => {
+        if (!usedPassages.has(passage.id)) {
+          availablePassages.push({ ...passage, category });
+        }
+      });
+    });
+    
+    // If all passages have been used, reset the used set
+    if (availablePassages.length === 0) {
+      setUsedPassages(new Set());
+      // Recollect all passages
+      allCategories.forEach(category => {
+        speechPassageBank[category].forEach(passage => {
+          availablePassages.push({ ...passage, category });
+        });
+      });
+    }
+    
+    // Select a random passage
+    const selectedPassage = availablePassages[Math.floor(Math.random() * availablePassages.length)];
+    
+    // Mark as used
+    setUsedPassages(prev => new Set([...prev, selectedPassage.id]));
+    
+    // Set current passage and metadata
+    setCurrentPassage(selectedPassage.text);
+    setPassageMetadata({
+      id: selectedPassage.id,
+      category: selectedPassage.category,
+      difficulty: selectedPassage.difficulty,
+      focus: selectedPassage.focus,
+      medicalTerms: selectedPassage.medicalTerms
+    });
+    
+    return selectedPassage;
+  }, [speechPassageBank, usedPassages]);
 
   // Fetch recent speech analyses
   const fetchRecentSpeechAnalyses = useCallback(async () => {
@@ -47,7 +200,7 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
     }
   }, []);
 
-  // Analyze speech through backend API
+  // Enhanced speech analysis with passage metadata
   const analyzeSpeech = useCallback(async (speechTranscript) => {
     if (!speechTranscript || speechTranscript.trim().length === 0) {
       console.warn('No transcript provided for analysis');
@@ -57,7 +210,15 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
     setRecordingStatus("Analyzing speech patterns...");
     
     try {
-      const data = await ApiService.analyzeSpeech(speechTranscript, currentPassage);
+      // Enhanced analysis payload with passage metadata
+      const analysisPayload = {
+        transcript: speechTranscript,
+        expectedText: currentPassage,
+        passageMetadata: passageMetadata,
+        timestamp: new Date().toISOString()
+      };
+      
+      const data = await ApiService.analyzeSpeech(analysisPayload.transcript, analysisPayload.expectedText);
       setSpeechMetrics(data || {});
       setRecordingStatus("Analysis complete.");
       setError(null);
@@ -65,6 +226,11 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       // Update parent component with speech metrics
       if (onSpeechMetricsUpdate && data) {
         onSpeechMetricsUpdate(data);
+      }
+      
+      // Call completion callback if provided
+      if (onComplete) {
+        setTimeout(() => onComplete(), 1000);
       }
       
       // Refresh recent analyses
@@ -76,26 +242,14 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       setRecordingStatus(errorMsg);
       setError(errorMsg);
     }
-  }, [currentPassage, onSpeechMetricsUpdate, fetchRecentSpeechAnalyses]);
+  }, [currentPassage, passageMetadata, onSpeechMetricsUpdate, onComplete, fetchRecentSpeechAnalyses]);
 
-  // Set random reading passage
-  const setRandomPassage = useCallback(() => {
-    if (!readingPassages || readingPassages.length === 0) {
-      console.error('Reading passages not available');
-      return;
-    }
-    const randomIndex = Math.floor(Math.random() * readingPassages.length);
-    setCurrentPassage(readingPassages[randomIndex]);
-  }, [readingPassages]);
-
-  // Check browser support and initialize - removed circular dependencies
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Check browser support and initialize
   const initializeSpeechRecognition = useCallback(() => {
     try {
       setIsInitializing(true);
       setError(null);
 
-      // Check if speech recognition is supported
       if (typeof window === 'undefined') {
         throw new Error('Speech recognition requires a browser environment');
       }
@@ -106,7 +260,6 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
         throw new Error('Speech recognition not supported in this browser. Please use Chrome, Safari, or Edge.');
       }
 
-      // Initialize recognition
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -114,7 +267,6 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
-        console.log('Speech recognition started');
         setIsRecording(true);
         setRecordingStatus("Listening... Please read the passage above clearly.");
         setError(null);
@@ -140,13 +292,10 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       };
 
       recognition.onend = () => {
-        console.log('Speech recognition ended');
         setIsRecording(false);
         
-        // Use ref to get current transcript value to avoid stale closure
         const finalTranscript = transcriptRef.current.trim();
         if (finalTranscript && finalTranscript.length > 5) {
-          // eslint-disable-next-line react-hooks/exhaustive-deps
           analyzeSpeech(finalTranscript);
         } else {
           setRecordingStatus("No speech detected or speech too short. Please try again with at least a few words.");
@@ -191,21 +340,20 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       setError(err.message);
       setRecordingStatus(err.message);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, []); // Removed dependencies to prevent infinite re-renders
+  }, [analyzeSpeech]);
 
   // Initialize speech recognition only once
   useEffect(() => {
     initializeSpeechRecognition();
   }, [initializeSpeechRecognition]);
 
-  // Set initial passage and fetch analyses only once
+  // Generate initial passage and fetch analyses
   useEffect(() => {
-    setRandomPassage();
+    generateNewPassage();
     fetchRecentSpeechAnalyses();
-  }, [setRandomPassage, fetchRecentSpeechAnalyses]);
+  }, [generateNewPassage, fetchRecentSpeechAnalyses]);
   
-  // Start recording
+  // Start recording with new passage generation
   const startRecording = useCallback(() => {
     if (!recognitionRef.current || !isSupported) {
       setError('Speech recognition not available');
@@ -213,6 +361,9 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
     }
 
     try {
+      // Generate a new passage each time recording starts
+      generateNewPassage();
+      
       setTranscript('');
       transcriptRef.current = '';
       setError(null);
@@ -222,7 +373,7 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
       setError('Failed to start recording. Please try again.');
       setRecordingStatus('Failed to start recording. Please try again.');
     }
-  }, [isSupported]);
+  }, [isSupported, generateNewPassage]);
   
   // Stop recording
   const stopRecording = useCallback(() => {
@@ -416,7 +567,25 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
         
         {/* Reading Passage */}
         <div className="mb-6">
-          <h4 className="font-bold mb-4 text-gray-800 text-lg">READING PASSAGE:</h4>
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-bold text-gray-800 text-lg">READING PASSAGE:</h4>
+            {passageMetadata && (
+              <div className="flex items-center space-x-2 text-xs">
+                <span className={`px-2 py-1 rounded-full text-white font-bold ${
+                  passageMetadata.difficulty === 'easy' ? 'bg-green-500' :
+                  passageMetadata.difficulty === 'medium' ? 'bg-yellow-500' :
+                  passageMetadata.difficulty === 'hard' ? 'bg-orange-500' :
+                  'bg-red-500'
+                }`}>
+                  {passageMetadata.difficulty?.toUpperCase()}
+                </span>
+                <span className="px-2 py-1 rounded-full bg-blue-500 text-white font-bold">
+                  {passageMetadata.category?.toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+          
           <motion.div 
             className="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-xl min-h-[100px] text-gray-800 shadow-inner"
             whileHover={{ scale: 1.01 }}
@@ -426,15 +595,72 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate }) => {
               {currentPassage || "Loading passage..."}
             </p>
           </motion.div>
-          <div className="mt-4">
-            <motion.button
-              onClick={setRandomPassage}
-              className="px-4 py-2 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 font-bold transition-all duration-300"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+          
+          {/* Passage Information */}
+          {passageMetadata && (
+            <motion.div 
+              className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              transition={{ duration: 0.3 }}
             >
-              NEW PASSAGE
-            </motion.button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h5 className="font-bold text-gray-700 mb-2">Assessment Focus:</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {passageMetadata.focus?.map((focus, index) => (
+                      <span key={index} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                        {focus.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h5 className="font-bold text-gray-700 mb-2">Medical Terms:</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {passageMetadata.medicalTerms?.map((term, index) => (
+                      <span key={index} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                        {term}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
+          <div className="mt-4 flex justify-between items-center">
+            <div className="flex space-x-2">
+              <motion.button
+                onClick={generateNewPassage}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all duration-300"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🔄 GENERATE NEW PASSAGE
+              </motion.button>
+              <motion.button
+                onClick={() => {
+                  // Copy passage to clipboard
+                  navigator.clipboard.writeText(currentPassage);
+                }}
+                className="px-4 py-2 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 font-bold transition-all duration-300"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                📋 COPY TEXT
+              </motion.button>
+            </div>
+            
+            {/* Usage Statistics */}
+            <div className="text-xs text-gray-500">
+              <span className="font-medium">Passages Used:</span> {usedPassages.size}/17
+              {usedPassages.size >= 17 && (
+                <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-700 rounded font-bold">
+                  🔄 RESET AVAILABLE
+                </span>
+              )}
+            </div>
           </div>
         </div>
         

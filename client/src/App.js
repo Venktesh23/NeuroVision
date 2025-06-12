@@ -2,42 +2,66 @@ import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "./components/Webcam";
 import DetectionView from "./components/DetectionView";
-import ResultsPanel from "./components/ResultsPanel";
-import InstructionsPanel from "./components/InstructionsPanel";
 import ErrorBoundary, { withErrorBoundary } from "./components/ErrorBoundary";
-import { LoadingButton, CameraLoader } from "./components/LoadingStates";
+import { CameraLoader } from "./components/LoadingStates";
 import ApiService from "./utils/apiService";
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider, useToast } from './components/ToastNotification';
 import AuthPage from './components/Auth/AuthPage';
 import UserProfile from './components/UserProfile';
+import About from './components/About';
+import UnifiedAssessment from './components/UnifiedAssessment';
 
 // Lazy load heavy components
-const SpeechAnalysis = lazy(() => import("./components/SpeechAnalysis"));
 const HistoricalData = lazy(() => import("./components/HistoricalData"));
 const FaceMeshDetection = lazy(() => import("./components/FaceMeshDetection"));
 const PoseDetection = lazy(() => import("./components/PoseDetection"));
 const StrokeAssessment = lazy(() => import("./components/StrokeAssessment"));
 
-// Loading component for lazy-loaded components
-const ComponentLoader = ({ children }) => (
-  <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
+// Enhanced Loading component with dark mode and visual polish
+const ComponentLoader = ({ message = "Loading component..." }) => (
+  <motion.div 
+    className="bg-white rounded-xl shadow-xl p-8 border border-gray-100"
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.3 }}
+  >
     <div className="text-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-      <p className="text-gray-600">Loading component...</p>
+      <motion.div 
+        className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-b-blue-600 mx-auto mb-4"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      />
+      <motion.div
+        className="space-y-2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        <p className="text-gray-600 font-medium">{message}</p>
+        <div className="flex justify-center space-x-1">
+          {[0, 1, 2].map((index) => (
+            <motion.div
+              key={index}
+              className="w-2 h-2 bg-blue-500 rounded-full"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.5, 1, 0.5]
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                delay: index * 0.2
+              }}
+            />
+          ))}
+        </div>
+      </motion.div>
     </div>
-  </div>
+  </motion.div>
 );
 
 // Wrap critical components with error boundaries
-const SafeSpeechAnalysis = withErrorBoundary(
-  (props) => (
-    <Suspense fallback={<ComponentLoader />}>
-      <SpeechAnalysis {...props} />
-    </Suspense>
-  ), 
-  "SpeechAnalysis"
-);
-
 const SafeHistoricalData = withErrorBoundary(
   (props) => (
     <Suspense fallback={<ComponentLoader />}>
@@ -47,7 +71,6 @@ const SafeHistoricalData = withErrorBoundary(
   "HistoricalData"
 );
 
-const SafeResultsPanel = withErrorBoundary(ResultsPanel, "ResultsPanel");
 const SafeDetectionView = withErrorBoundary(DetectionView, "DetectionView");
 
 // Create authenticated app component
@@ -61,15 +84,17 @@ const AuthenticatedApp = () => {
   const [riskLevel, setRiskLevel] = useState("low");
   const [assessmentFindings, setAssessmentFindings] = useState([]);
   const [serverStatus, setServerStatus] = useState("unknown");
-  const [activeTab, setActiveTab] = useState("detection");
+  const [activeTab, setActiveTab] = useState("assessment");
   const [isInitializingCamera, setIsInitializingCamera] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentAssessmentPhase, setCurrentAssessmentPhase] = useState("instruction");
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const lastSaveRef = useRef(null);
 
-  const { user } = useAuth();
+  useAuth(); // Authentication context
+  const { showSuccess, showError, showWarning } = useToast();
 
   const toggleDetection = async () => {
     if (!isDetecting) {
@@ -114,7 +139,6 @@ const AuthenticatedApp = () => {
           if (currentDataString !== lastSaveRef.current) {
             await ApiService.saveAssessment(assessmentData);
             lastSaveRef.current = currentDataString;
-            console.log('Assessment auto-saved');
           }
         } catch (error) {
           console.error('Failed to auto-save assessment:', error);
@@ -165,16 +189,28 @@ const AuthenticatedApp = () => {
       const result = await ApiService.saveAssessment(assessmentData);
       
       if (result.message && result.message.includes('not saved')) {
-        alert('Assessment processed successfully, but database is currently unavailable. Data was not permanently saved.');
+        showWarning('Assessment processed successfully, but database is currently unavailable. Data was not permanently saved.', {
+          title: 'Database Unavailable',
+          duration: 7000
+        });
       } else {
-        alert('Assessment saved successfully!');
+        showSuccess('Assessment saved successfully!', {
+          title: 'Success',
+          duration: 4000
+        });
       }
     } catch (error) {
       console.error('Failed to save assessment:', error);
       if (serverStatus === 'disconnected') {
-        alert('Cannot save assessment: Server is offline. Please check your connection.');
+        showError('Cannot save assessment: Server is offline. Please check your connection.', {
+          title: 'Connection Error',
+          duration: 6000
+        });
       } else {
-        alert('Failed to save assessment: ' + (error.message || 'Unknown error occurred'));
+        showError('Failed to save assessment: ' + (error.message || 'Unknown error occurred'), {
+          title: 'Save Failed',
+          duration: 6000
+        });
       }
     } finally {
       setIsSaving(false);
@@ -194,39 +230,12 @@ const AuthenticatedApp = () => {
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
   };
 
-  // Add user profile section in the header
-  const renderUserSection = () => (
-    <motion.div 
-      className="flex items-center space-x-4"
-      initial={{ x: 30, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ delay: 0.3, duration: 0.5 }}
-    >
-      <div className="text-right">
-        <p className="text-white font-bold">Welcome, {user?.name}</p>
-        <p className="text-gray-300 text-sm">{user?.email}</p>
-      </div>
-      <div 
-        className={`text-sm px-4 py-2 rounded-full font-bold shadow-lg transition-all duration-300 ${
-          serverStatus === "connected" 
-            ? "bg-emerald-500 text-white" 
-            : serverStatus === "disconnected" 
-              ? "bg-red-500 text-white" 
-              : "bg-amber-500 text-white"
-        }`}
-        role="status"
-        aria-live="polite"
-        aria-label={`Server connection status: ${serverStatus}`}
-      >
-        SERVER: {serverStatus === "connected" ? "CONNECTED" : serverStatus === "disconnected" ? "OFFLINE" : "UNKNOWN"}
-      </div>
-    </motion.div>
-  );
+
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      <motion.header 
-        className="bg-slate-800 text-white p-6 shadow-xl"
+              <motion.header 
+          className="bg-blue-600 text-white p-6 shadow-xl"
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -240,11 +249,12 @@ const AuthenticatedApp = () => {
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <h1 className="text-4xl font-black tracking-tight">NeuroVision</h1>
-              <p className="mt-2 text-gray-300 font-medium text-lg">
+              <p className="mt-2 text-gray-200 font-medium text-lg">
                 Advanced Neurological Assessment Platform
               </p>
             </motion.div>
-            {renderUserSection()}
+            
+
           </div>
         </div>
       </motion.header>
@@ -269,7 +279,7 @@ const AuthenticatedApp = () => {
         </motion.div>
       )}
 
-      {/* Add User Profile to navigation tabs */}
+      {/* Enhanced Navigation with Visual Polish */}
       <motion.div 
         className="bg-white border-b-2 border-gray-200 shadow-sm"
         initial={{ opacity: 0 }}
@@ -281,27 +291,37 @@ const AuthenticatedApp = () => {
         <div className="container mx-auto">
           <nav className="flex space-x-0" role="tablist">
             {[
-              { id: "detection", label: "Live Detection", ariaControls: "detection-panel" },
-              { id: "speech", label: "Speech Analysis", ariaControls: "speech-panel" },
+              { id: "assessment", label: "Neurological Assessment", ariaControls: "assessment-panel" },
               { id: "history", label: "Assessment History", ariaControls: "history-panel" },
-              { id: "profile", label: "Profile", ariaControls: "profile-panel" }
+              { id: "profile", label: "Profile", ariaControls: "profile-panel" },
+              { id: "about", label: "About", ariaControls: "about-panel" }
             ].map((tab) => (
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-6 border-b-4 font-bold text-sm tracking-wide transition-all duration-300 ${
+                className={`py-4 px-6 border-b-4 font-bold text-sm tracking-wide transition-all duration-300 relative overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                   activeTab === tab.id
                     ? "border-blue-600 text-blue-700 bg-blue-50"
                     : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
                 }`}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ 
+                  scale: 1.02,
+                  y: -1
+                }}
                 whileTap={{ scale: 0.98 }}
                 role="tab"
                 aria-selected={activeTab === tab.id}
                 aria-controls={tab.ariaControls}
                 tabIndex={activeTab === tab.id ? 0 : -1}
               >
-                {tab.label}
+                {/* Hover effect background */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+                <span className="relative z-10">{tab.label}</span>
               </motion.button>
             ))}
           </nav>
@@ -310,24 +330,24 @@ const AuthenticatedApp = () => {
 
       <main className="container mx-auto p-6" role="main">
         <AnimatePresence mode="wait">
-          {/* Live Detection Tab */}
-          {activeTab === "detection" && (
+          {/* Unified Assessment Tab */}
+          {activeTab === "assessment" && (
             <motion.div 
-              key="detection"
+              key="assessment"
               className="grid grid-cols-1 lg:grid-cols-3 gap-8"
               variants={containerVariants}
               initial="initial"
               animate="animate"
               exit="exit"
               role="tabpanel"
-              id="detection-panel"
-              aria-labelledby="detection-tab"
+              id="assessment-panel"
+              aria-labelledby="assessment-tab"
             >
               {/* Camera Input Section */}
               <div className="lg:col-span-2 space-y-8">
                 <ErrorBoundary componentName="Camera System">
                   <motion.div 
-                    className="bg-white rounded-xl shadow-xl p-6 border border-gray-100"
+                    className="bg-white rounded-xl shadow-xl p-6 border border-gray-100 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300"
                     variants={tabVariants}
                     initial="initial"
                     animate="animate"
@@ -344,88 +364,17 @@ const AuthenticatedApp = () => {
                       ) : (
                         <>
                           <Webcam ref={webcamRef} isDetecting={isDetecting} />
-                          <SafeDetectionView
-                            ref={canvasRef}
-                            faceMeshResults={faceMeshResults}
-                            poseResults={poseResults}
-                          />
+                          {/* Only show detection overlay when not in results phase */}
+                          {currentAssessmentPhase !== 'results' && currentAssessmentPhase !== 'instruction' && (
+                            <SafeDetectionView
+                              ref={canvasRef}
+                              faceMeshResults={faceMeshResults}
+                              poseResults={poseResults}
+                            />
+                          )}
                         </>
                       )}
                     </div>
-                    <div className="mt-6 flex gap-3 flex-wrap" role="group" aria-label="Camera controls">
-                      <LoadingButton
-                        onClick={toggleDetection}
-                        isLoading={isInitializingCamera}
-                        loadingText="INITIALIZING..."
-                        className={
-                          isDetecting 
-                            ? "bg-red-600 hover:bg-red-700 text-white" 
-                            : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        }
-                        aria-describedby="detection-status"
-                      >
-                        {isDetecting ? "STOP DETECTION" : "START DETECTION"}
-                      </LoadingButton>
-                      <motion.button
-                        onClick={clearResults}
-                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        aria-label="Clear all assessment results"
-                      >
-                        CLEAR RESULTS
-                      </motion.button>
-                      <LoadingButton
-                        onClick={manualSave}
-                        isLoading={isSaving}
-                        loadingText="SAVING..."
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        disabled={Object.keys(asymmetryMetrics).length === 0}
-                        aria-label="Save current assessment data"
-                        aria-describedby="save-status"
-                      >
-                        SAVE ASSESSMENT
-                      </LoadingButton>
-                    </div>
-                    
-                    {/* Detection Status */}
-                    <motion.div 
-                      className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      id="detection-status"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-700">DETECTION STATUS:</span>
-                        <motion.span 
-                          className={`px-4 py-2 rounded-full text-xs font-black shadow-md ${
-                            isDetecting ? 'bg-emerald-500 text-white' : 'bg-gray-500 text-white'
-                          }`}
-                          animate={{ scale: isDetecting ? [1, 1.1, 1] : 1 }}
-                          transition={{ repeat: isDetecting ? Infinity : 0, duration: 2 }}
-                          aria-label={`Detection is currently ${isDetecting ? 'active' : 'stopped'}`}
-                        >
-                          {isDetecting ? 'ACTIVE' : 'STOPPED'}
-                        </motion.span>
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-6 text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-700">Face Detection:</span>
-                          <span className={faceMeshResults ? 'text-emerald-600 font-bold' : 'text-gray-400'}>
-                            {faceMeshResults ? 'ACTIVE' : 'INACTIVE'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-700">Pose Detection:</span>
-                          <span className={poseResults ? 'text-emerald-600 font-bold' : 'text-gray-400'}>
-                            {poseResults ? 'ACTIVE' : 'INACTIVE'}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
                   </motion.div>
                 </ErrorBoundary>
                 
@@ -457,36 +406,29 @@ const AuthenticatedApp = () => {
                 )}
               </div>
 
-              {/* Results Panel */}
+              {/* Unified Assessment Panel */}
               <div className="space-y-8">
-                <SafeResultsPanel
-                  asymmetryMetrics={asymmetryMetrics}
-                  postureMetrics={postureMetrics}
-                  speechMetrics={speechMetrics}
-                  riskLevel={riskLevel}
-                  assessmentFindings={assessmentFindings}
-                />
-                
-                <ErrorBoundary componentName="Instructions Panel">
-                  <InstructionsPanel />
+                <ErrorBoundary componentName="Unified Assessment">
+                  <UnifiedAssessment
+                    webcamRef={webcamRef}
+                    canvasRef={canvasRef}
+                    isDetecting={isDetecting}
+                    onToggleDetection={toggleDetection}
+                    faceMeshResults={faceMeshResults}
+                    poseResults={poseResults}
+                    asymmetryMetrics={asymmetryMetrics}
+                    postureMetrics={postureMetrics}
+                    speechMetrics={speechMetrics}
+                    onSpeechMetricsUpdate={handleSpeechMetricsUpdate}
+                    onClearResults={clearResults}
+                    onSaveAssessment={manualSave}
+                    isSaving={isSaving}
+                    riskLevel={riskLevel}
+                    assessmentFindings={assessmentFindings}
+                    onPhaseChange={setCurrentAssessmentPhase}
+                  />
                 </ErrorBoundary>
               </div>
-            </motion.div>
-          )}
-
-          {/* Speech Analysis Tab */}
-          {activeTab === "speech" && (
-            <motion.div 
-              key="speech"
-              variants={containerVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              role="tabpanel"
-              id="speech-panel"
-              aria-labelledby="speech-tab"
-            >
-              <SafeSpeechAnalysis onSpeechMetricsUpdate={handleSpeechMetricsUpdate} />
             </motion.div>
           )}
 
@@ -523,6 +465,24 @@ const AuthenticatedApp = () => {
               </ErrorBoundary>
             </motion.div>
           )}
+
+          {/* About Tab */}
+          {activeTab === "about" && (
+            <motion.div 
+              key="about"
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              role="tabpanel"
+              id="about-panel"
+              aria-labelledby="about-tab"
+            >
+              <ErrorBoundary componentName="About">
+                <About />
+              </ErrorBoundary>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
     </div>
@@ -532,9 +492,11 @@ const AuthenticatedApp = () => {
 function App() {
   return (
     <ErrorBoundary componentName="Main Application">
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }
@@ -545,10 +507,26 @@ const AppContent = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading NeuroVision...</p>
-        </div>
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div 
+            className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-b-blue-600 mx-auto mb-6"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <p className="text-gray-600 text-lg font-medium mb-2">Loading NeuroVision...</p>
+            <p className="text-gray-500 text-sm">Initializing neural assessment systems</p>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }

@@ -43,16 +43,29 @@ class ApiService {
         // Demo mode - simulate login
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
         
-        if (email === 'demo@neurovision.com' && password === 'demo123') {
-          const user = {
+        // Check if user exists in demo storage
+        const demoUsers = JSON.parse(localStorage.getItem('demo_users') || '{}');
+        const user = demoUsers[email];
+        
+        if (user && user.password === password) {
+          const userInfo = {
+            id: user.id,
+            email: user.email,
+            name: user.name
+          };
+          const token = this.generateDemoToken(userInfo);
+          return { token, user: userInfo, message: 'Login successful' };
+        } else if (email === 'demo@neurovision.com' && password === 'demo123') {
+          // Fallback demo credentials
+          const userInfo = {
             id: 'demo-user-1',
             email: 'demo@neurovision.com',
             name: 'Demo User'
           };
-          const token = this.generateDemoToken(user);
-          return { token, user, message: 'Demo login successful' };
+          const token = this.generateDemoToken(userInfo);
+          return { token, user: userInfo, message: 'Demo login successful' };
         } else {
-          throw new Error('Demo credentials: email: demo@neurovision.com, password: demo123');
+          throw new Error('Invalid email or password. Please check your credentials or sign up for a new account.');
         }
       }
 
@@ -85,13 +98,34 @@ class ApiService {
         // Demo mode - simulate registration
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
         
+        // Check if user already exists in demo storage
+        const demoUsers = JSON.parse(localStorage.getItem('demo_users') || '{}');
+        
+        if (demoUsers[email]) {
+          throw new Error('An account with this email already exists. Please sign in instead.');
+        }
+        
+        // Create new user in demo storage
         const user = {
           id: `demo-user-${Date.now()}`,
           email,
-          name
+          name,
+          password, // In demo mode, we store the password for login
+          createdAt: new Date().toISOString()
         };
-        const token = this.generateDemoToken(user);
-        return { token, user, message: 'Demo registration successful' };
+        
+        demoUsers[email] = user;
+        localStorage.setItem('demo_users', JSON.stringify(demoUsers));
+        
+        // Return user info without password
+        const userInfo = {
+          id: user.id,
+          email: user.email,
+          name: user.name
+        };
+        
+        const token = this.generateDemoToken(userInfo);
+        return { token, user: userInfo, message: 'Registration successful' };
       }
 
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -161,7 +195,6 @@ class ApiService {
       if (DEMO_MODE) {
         // Demo mode - simulate saving
         await new Promise(resolve => setTimeout(resolve, 300));
-        console.log('Demo mode: Assessment processed but not saved');
         return {
           id: `demo-assessment-${Date.now()}`,
           message: 'Assessment processed in demo mode (not permanently saved)'

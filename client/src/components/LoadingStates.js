@@ -11,20 +11,14 @@ export const LoadingSpinner = ({ size = 'md', color = 'blue', className = '' }) 
   };
 
   const colorClasses = {
-    blue: 'border-blue-600',
-    emerald: 'border-emerald-600',
-    red: 'border-red-600',
-    gray: 'border-gray-600'
+    blue: 'border-blue-200 border-b-blue-600',
+    white: 'border-white/30 border-b-white',
+    gray: 'border-gray-200 border-b-gray-600'
   };
 
   return (
     <motion.div
-      className={`
-        ${sizeClasses[size]} 
-        border-4 border-gray-200 border-t-4 ${colorClasses[color]} 
-        rounded-full 
-        ${className}
-      `}
+      className={`${sizeClasses[size]} border-4 border-solid rounded-full ${colorClasses[color]} ${className}`}
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
       role="status"
@@ -43,10 +37,126 @@ export const SkeletonCard = ({ className = '' }) => (
         <div className="h-4 bg-gray-200 rounded w-5/6"></div>
         <div className="h-4 bg-gray-200 rounded w-4/6"></div>
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mt-6">
         <div className="h-20 bg-gray-200 rounded-xl"></div>
         <div className="h-20 bg-gray-200 rounded-xl"></div>
       </div>
+    </div>
+  </div>
+);
+
+// Enhanced History Loading Skeleton
+export const HistorySkeletonLoader = () => (
+  <div className="space-y-6">
+    {[...Array(3)].map((_, index) => (
+      <div key={index} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+        <div className="animate-pulse">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <div className="h-5 bg-gray-200 rounded w-32"></div>
+              <div className="h-4 bg-gray-200 rounded w-24"></div>
+            </div>
+            <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            </div>
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            </div>
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// Speech Analysis Enhanced Loading
+export const SpeechAnalysisLoader = ({ progress = 0 }) => (
+  <motion.div
+    className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600 p-6 rounded-xl"
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    role="status"
+    aria-label="Analyzing speech"
+  >
+    <div className="flex items-center gap-4">
+      <motion.div
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 1, repeat: Infinity }}
+        className="text-3xl"
+      >
+        🎤
+      </motion.div>
+      <div className="flex-1">
+        <h4 className="font-bold text-blue-800 mb-1">Analyzing Speech Patterns</h4>
+        <p className="text-blue-600 text-sm">Processing audio and detecting speech characteristics...</p>
+        
+        {/* Progress bar */}
+        <div className="mt-3">
+          <div className="w-full bg-blue-200 rounded-full h-3 mb-3 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-blue-600">
+            <span>Processing...</span>
+            <span>{progress}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </motion.div>
+);
+
+// Processing Steps Loader
+export const ProcessingStepsLoader = ({ currentStep, steps }) => (
+  <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+    <h4 className="font-bold text-gray-800 mb-4">Processing Assessment</h4>
+    <div className="space-y-3">
+      {steps.map((step, index) => {
+        const isCompleted = index < currentStep;
+        const isCurrent = index === currentStep;
+        
+        return (
+          <div key={index} className="flex items-center gap-3">
+            <div className={`
+              w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+              ${isCurrent ? 'bg-blue-500 text-white' : 
+                isCompleted ? 'bg-emerald-500 text-white' : 
+                'bg-gray-300 text-gray-500'}
+            `}>
+              {isCompleted ? '✓' : isCurrent ? 
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                >
+                  ⟳
+                </motion.div> : index + 1}
+            </div>
+            <span className={`text-sm ${
+              isCurrent ? 'text-blue-700 font-semibold' : 
+              isCompleted ? 'text-emerald-700' : 
+              'text-gray-500'
+            }`}>
+              {step}
+            </span>
+          </div>
+        );
+      })}
     </div>
   </div>
 );
@@ -150,11 +260,11 @@ export const CameraLoader = () => (
   >
     <div className="text-center text-white">
       <motion.div
-        className="text-6xl mb-4"
+        className="mb-4"
         animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        📹
+        <LoadingSpinner size="xl" color="white" />
       </motion.div>
       <p className="text-lg font-medium">Initializing Camera...</p>
       <DotsLoader color="white" />
@@ -212,7 +322,7 @@ export const SpeechLoader = () => (
               transition={{ duration: 3, repeat: Infinity }}
             />
           </div>
-          <span className="text-sm text-blue-700 font-medium">Processing...</span>
+          <span className="text-blue-600 text-sm font-medium">Processing...</span>
         </div>
       </div>
     </div>
@@ -223,22 +333,20 @@ export const SpeechLoader = () => (
 export const LoadingError = ({ onRetry, message = 'Failed to load data' }) => (
   <motion.div
     className="bg-red-50 border border-red-200 rounded-xl p-6 text-center"
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    role="alert"
-    aria-live="assertive"
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
   >
-    <div className="text-4xl mb-4">⚠️</div>
-    <h3 className="font-bold text-red-800 mb-2">{message}</h3>
-    <p className="text-red-600 mb-4 text-sm">
-      There was a problem loading this content. Please try again.
-    </p>
-    <LoadingButton
-      onClick={onRetry}
-      className="bg-red-600 hover:bg-red-700 text-white"
-    >
-      TRY AGAIN
-    </LoadingButton>
+    <div className="text-red-400 text-4xl mb-4">⚠️</div>
+    <h3 className="text-red-800 font-bold text-lg mb-2">Loading Error</h3>
+    <p className="text-red-600 mb-4">{message}</p>
+    {onRetry && (
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+      >
+        Try Again
+      </button>
+    )}
   </motion.div>
 );
 
@@ -255,4 +363,4 @@ const LoadingComponents = {
   LoadingError
 };
 
-export default LoadingComponents; 
+export default LoadingComponents;

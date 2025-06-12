@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(userData);
       
-      return { success: true };
+      return { success: true, message: response.message };
     } catch (error) {
       console.error('Login failed:', error);
       return { 
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(userData);
       
-      return { success: true };
+      return { success: true, message: response.message };
     } catch (error) {
       console.error('Registration failed:', error);
       return { 
