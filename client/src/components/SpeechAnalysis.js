@@ -2,7 +2,12 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import ApiService from "../utils/apiService";
 
-const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
+const SpeechAnalysis = ({ 
+  onSpeechMetricsUpdate, 
+  onComplete, 
+  facialMetrics = null, 
+  postureMetrics = null 
+}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [recordingStatus, setRecordingStatus] = useState('Click "Start Recording" to begin voice analysis');
@@ -36,24 +41,43 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
       neurological: [
         {
           id: 'neuro_1',
-          difficulty: 'medium',
-          text: "Today is Thursday, the thirtieth of November. The weather is warm and wonderful. Please remember to take your medication as prescribed by your doctor.",
-          focus: ['articulation', 'memory', 'temporal_awareness'],
-          medicalTerms: ['medication', 'prescribed', 'doctor']
+          difficulty: 'easy',
+          text: "The early bird catches the worm. Please repeat this clearly three times.",
+          focus: ['consonant_clusters', 'repetition', 'motor_consistency'],
+          medicalTerms: ['repeat', 'clearly'],
+          strokeSensitive: ['r', 'l', 'th', 'early', 'bird']
         },
         {
-          id: 'neuro_2', 
+          id: 'neuro_2',
           difficulty: 'medium',
-          text: "The patient complained of persistent headaches and dizziness. The physician recommended immediate medical attention and proper hydration.",
-          focus: ['medical_terminology', 'complex_sentences', 'pronunciation'],
-          medicalTerms: ['patient', 'persistent', 'physician', 'medical']
+          text: "British Constitution. Methodist Episcopal. Around the rugged rocks the ragged rascals ran.",
+          focus: ['tongue_twisters', 'articulation_precision', 'consonant_blends'],
+          medicalTerms: ['constitution', 'episcopal'],
+          strokeSensitive: ['r', 'constitution', 'methodist', 'episcopal', 'rugged', 'rocks', 'ragged', 'rascals']
         },
         {
           id: 'neuro_3',
+          difficulty: 'medium',
+          text: "Today is Thursday, the thirtieth of November. The weather is warm and wonderful.",
+          focus: ['temporal_awareness', 'articulation', 'memory'],
+          medicalTerms: ['november', 'weather'],
+          strokeSensitive: ['th', 'thirtieth', 'thursday', 'weather', 'wonderful', 'warm']
+        },
+        {
+          id: 'neuro_4',
           difficulty: 'hard',
-          text: "Neurological examination revealed asymmetrical facial expressions. The assessment indicated potential cerebrovascular complications requiring urgent intervention.",
-          focus: ['medical_complexity', 'multisyllabic_words', 'technical_pronunciation'],
-          medicalTerms: ['neurological', 'asymmetrical', 'cerebrovascular', 'intervention']
+          text: "Neurological examination revealed asymmetrical facial expressions and potential speech articulation difficulties.",
+          focus: ['medical_terminology', 'multisyllabic_words', 'technical_pronunciation'],
+          medicalTerms: ['neurological', 'examination', 'asymmetrical', 'articulation'],
+          strokeSensitive: ['neurological', 'asymmetrical', 'articulation', 'difficulties']
+        },
+        {
+          id: 'neuro_5',
+          difficulty: 'expert',
+          text: "Hippopotamus, rhinoceros, and elephant walked through the thick thorny thicket thinking thoughtful thoughts.",
+          focus: ['complex_articulation', 'alliteration', 'tongue_coordination'],
+          medicalTerms: ['hippopotamus', 'rhinoceros'],
+          strokeSensitive: ['hippopotamus', 'rhinoceros', 'thick', 'thorny', 'thicket', 'thinking', 'thoughtful', 'thoughts']
         }
       ],
 
@@ -62,23 +86,34 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
         {
           id: 'cog_1',
           difficulty: 'easy',
-          text: "First, wash your hands with soap and water. Next, dry them with a clean towel. Finally, apply hand sanitizer for extra protection.",
-          focus: ['sequencing', 'instructions', 'simple_commands'],
-          medicalTerms: ['sanitizer', 'protection']
+          text: "Please count from one to ten, then spell your first name backwards.",
+          focus: ['sequencing', 'working_memory', 'cognitive_load'],
+          medicalTerms: ['count', 'spell'],
+          strokeSensitive: ['backwards', 'sequencing']
         },
         {
           id: 'cog_2',
-          difficulty: 'medium', 
-          text: "Emergency procedures require clear communication between healthcare providers. Accurate documentation ensures proper patient care and safety protocols.",
+          difficulty: 'medium',
+          text: "Emergency procedures require clear communication between healthcare providers and immediate documentation.",
           focus: ['professional_vocabulary', 'complex_concepts', 'healthcare_context'],
-          medicalTerms: ['emergency', 'healthcare', 'documentation', 'protocols']
+          medicalTerms: ['emergency', 'procedures', 'healthcare', 'providers', 'documentation'],
+          strokeSensitive: ['emergency', 'procedures', 'communication', 'immediate']
         },
         {
           id: 'cog_3',
           difficulty: 'hard',
-          text: "Pharmacological interventions must be administered according to established therapeutic guidelines. Contraindications and adverse reactions should be monitored continuously.",
+          text: "Describe the steps to make a peanut butter sandwich, including opening containers and spreading ingredients.",
+          focus: ['procedural_memory', 'sequential_planning', 'detailed_description'],
+          medicalTerms: ['procedures', 'ingredients'],
+          strokeSensitive: ['describe', 'containers', 'spreading', 'ingredients']
+        },
+        {
+          id: 'cog_4',
+          difficulty: 'expert',
+          text: "Pharmacological interventions must be administered according to established therapeutic guidelines while monitoring contraindications.",
           focus: ['pharmaceutical_terminology', 'complex_grammar', 'medical_precision'],
-          medicalTerms: ['pharmacological', 'therapeutic', 'contraindications', 'adverse']
+          medicalTerms: ['pharmacological', 'interventions', 'administered', 'therapeutic', 'guidelines', 'contraindications'],
+          strokeSensitive: ['pharmacological', 'administered', 'therapeutic', 'contraindications']
         }
       ],
 
@@ -86,108 +121,248 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
       motor: [
         {
           id: 'motor_1',
-          difficulty: 'medium',
-          text: "Breathe deeply and speak slowly. Articulate each syllable clearly. Maintain steady rhythm throughout your speech.",
-          focus: ['breath_control', 'rhythm', 'articulation'],
-          medicalTerms: ['articulate', 'syllable']
+          difficulty: 'easy',
+          text: "Pa-ta-ka, pa-ta-ka, pa-ta-ka. Repeat this sequence five times as quickly and clearly as possible.",
+          focus: ['diadochokinesis', 'oral_motor_speed', 'coordination'],
+          medicalTerms: ['sequence', 'repeat'],
+          strokeSensitive: ['pa-ta-ka', 'quickly', 'clearly', 'possible']
         },
         {
           id: 'motor_2',
-          difficulty: 'hard',
-          text: "Rapid alternating movements require precise coordination. Practice purposeful patterns to improve articulatory precision and phonetic accuracy.",
-          focus: ['rapid_speech', 'coordination', 'precision'],
-          medicalTerms: ['coordination', 'articulatory', 'phonetic']
+          difficulty: 'medium',
+          text: "Breathe deeply and speak slowly. Articulate each syllable clearly while maintaining steady rhythm.",
+          focus: ['breath_control', 'rhythm', 'articulation', 'pacing'],
+          medicalTerms: ['articulate', 'syllable', 'rhythm'],
+          strokeSensitive: ['breathe', 'articulate', 'syllable', 'maintaining', 'steady']
         },
         {
           id: 'motor_3',
+          difficulty: 'hard',
+          text: "Rapid alternating movements require precise coordination and consistent articulatory patterns throughout speech production.",
+          focus: ['rapid_speech', 'coordination', 'precision', 'consistency'],
+          medicalTerms: ['alternating', 'coordination', 'articulatory', 'production'],
+          strokeSensitive: ['rapid', 'alternating', 'precise', 'coordination', 'articulatory', 'production']
+        },
+        {
+          id: 'motor_4',
           difficulty: 'expert',
-          text: "Supraglottal articulation involves intricate muscular coordination. Laryngeal adjustments affect vocal quality and respiratory synchronization during speech production.",
+          text: "Supraglottal articulation involves intricate muscular coordination affecting laryngeal adjustments and respiratory synchronization.",
           focus: ['technical_anatomy', 'complex_coordination', 'respiratory_control'],
-          medicalTerms: ['supraglottal', 'laryngeal', 'synchronization']
+          medicalTerms: ['supraglottal', 'articulation', 'muscular', 'laryngeal', 'respiratory', 'synchronization'],
+          strokeSensitive: ['supraglottal', 'articulation', 'intricate', 'muscular', 'laryngeal', 'synchronization']
         }
       ],
 
-      // Current Events & Spontaneous Speech
+      // Current Events & Spontaneous Speech (Focus on fluency, word-finding)
       spontaneous: [
         {
           id: 'spont_1',
           difficulty: 'easy',
-          text: "Describe your morning routine and how you prepare for important appointments. Include details about breakfast and travel arrangements.",
-          focus: ['spontaneous_speech', 'narrative', 'personal_details'],
-          medicalTerms: ['routine', 'appointments']
+          text: "Tell me about your morning routine. What did you eat for breakfast today?",
+          focus: ['spontaneous_speech', 'personal_narrative', 'word_retrieval'],
+          medicalTerms: ['routine', 'breakfast'],
+          strokeSensitive: ['morning', 'routine', 'breakfast']
         },
         {
           id: 'spont_2',
           difficulty: 'medium',
-          text: "Explain the importance of regular medical checkups. Discuss how preventive care can identify health issues before they become serious problems.",
-          focus: ['explanatory_speech', 'health_concepts', 'reasoning'],
-          medicalTerms: ['medical', 'preventive', 'identify']
+          text: "Describe the importance of regular medical checkups and how they help prevent serious health problems.",
+          focus: ['explanatory_speech', 'health_concepts', 'complex_reasoning'],
+          medicalTerms: ['medical', 'checkups', 'prevent', 'health'],
+          strokeSensitive: ['importance', 'regular', 'medical', 'checkups', 'prevent', 'serious']
+        },
+        {
+          id: 'spont_3',
+          difficulty: 'hard',
+          text: "Explain how modern technology has changed healthcare delivery and patient communication in hospitals.",
+          focus: ['abstract_reasoning', 'technical_vocabulary', 'complex_explanation'],
+          medicalTerms: ['technology', 'healthcare', 'delivery', 'patient', 'communication', 'hospitals'],
+          strokeSensitive: ['technology', 'healthcare', 'delivery', 'communication', 'hospitals']
         }
       ],
 
-      // Emotional & Stress Testing
+      // Emotional & Stress Testing (Focus on prosody, emotional expression)
       emotional: [
         {
           id: 'emot_1',
           difficulty: 'medium',
-          text: "During stressful situations, it's important to remain calm and communicate clearly. Practice deep breathing exercises to maintain composure.",
-          focus: ['stress_response', 'emotional_control', 'coping_strategies'],
-          medicalTerms: ['stressful', 'communicate', 'exercises']
+          text: "During stressful situations, it's important to remain calm and communicate clearly with confidence.",
+          focus: ['stress_response', 'emotional_control', 'prosody'],
+          medicalTerms: ['stressful', 'communicate', 'confidence'],
+          strokeSensitive: ['stressful', 'situations', 'important', 'communicate', 'confidence']
         },
         {
           id: 'emot_2',
           difficulty: 'hard',
-          text: "Anxiety can significantly impact speech patterns and cognitive performance. Therapeutic interventions help patients develop effective coping mechanisms.",
+          text: "Express frustration, then joy, then concern while saying: The weather forecast predicts rain tomorrow.",
+          focus: ['emotional_prosody', 'vocal_modulation', 'emotional_flexibility'],
+          medicalTerms: ['forecast', 'predicts'],
+          strokeSensitive: ['frustration', 'concern', 'weather', 'forecast', 'predicts', 'tomorrow']
+        },
+        {
+          id: 'emot_3',
+          difficulty: 'expert',
+          text: "Anxiety can significantly impact speech patterns and cognitive performance requiring therapeutic intervention.",
           focus: ['emotional_vocabulary', 'psychological_concepts', 'therapeutic_language'],
-          medicalTerms: ['anxiety', 'cognitive', 'therapeutic', 'mechanisms']
+          medicalTerms: ['anxiety', 'cognitive', 'performance', 'therapeutic', 'intervention'],
+          strokeSensitive: ['anxiety', 'significantly', 'cognitive', 'performance', 'therapeutic', 'intervention']
+        }
+      ],
+
+      // Aphasia Screening (Focus on naming, repetition, comprehension)
+      aphasia: [
+        {
+          id: 'aphasia_1',
+          difficulty: 'easy',
+          text: "Name these common objects: pen, watch, book, key, chair.",
+          focus: ['object_naming', 'word_retrieval', 'semantic_access'],
+          medicalTerms: ['objects'],
+          strokeSensitive: ['watch', 'chair']
+        },
+        {
+          id: 'aphasia_2',
+          difficulty: 'medium',
+          text: "The lawyer's closing argument convinced the skeptical jury members despite opposing evidence.",
+          focus: ['complex_syntax', 'passive_voice', 'abstract_concepts'],
+          medicalTerms: ['argument', 'evidence'],
+          strokeSensitive: ['lawyer', 'closing', 'argument', 'convinced', 'skeptical', 'opposing', 'evidence']
+        },
+        {
+          id: 'aphasia_3',
+          difficulty: 'hard',
+          text: "Point to the pen after you pick up the paper but before you touch the book.",
+          focus: ['complex_commands', 'temporal_sequencing', 'comprehension'],
+          medicalTerms: ['commands', 'sequencing'],
+          strokeSensitive: ['point', 'pick', 'touch', 'before', 'after']
         }
       ]
     };
   }, []);
 
-  // Get a new passage avoiding recently used ones
+  // Enhanced passage selection with neurological prioritization
   const generateNewPassage = useCallback(() => {
     const allCategories = Object.keys(speechPassageBank);
     const availablePassages = [];
     
-    // Collect all passages that haven't been used recently
-    allCategories.forEach(category => {
-      speechPassageBank[category].forEach(passage => {
-        if (!usedPassages.has(passage.id)) {
-          availablePassages.push({ ...passage, category });
-        }
-      });
+    // Prioritize neurological and motor assessments for stroke detection
+    const priorityCategories = ['neurological', 'motor', 'aphasia'];
+    const standardCategories = ['cognitive', 'spontaneous', 'emotional'];
+    
+    // First, try to get passages from priority categories
+    priorityCategories.forEach(category => {
+      if (speechPassageBank[category]) {
+        speechPassageBank[category].forEach(passage => {
+          if (!usedPassages.has(passage.id)) {
+            availablePassages.push({ ...passage, category, priority: true });
+          }
+        });
+      }
     });
     
-    // If all passages have been used, reset the used set
+    // If no priority passages available, add standard categories
     if (availablePassages.length === 0) {
-      setUsedPassages(new Set());
-      // Recollect all passages
-      allCategories.forEach(category => {
-        speechPassageBank[category].forEach(passage => {
-          availablePassages.push({ ...passage, category });
-        });
+      standardCategories.forEach(category => {
+        if (speechPassageBank[category]) {
+          speechPassageBank[category].forEach(passage => {
+            if (!usedPassages.has(passage.id)) {
+              availablePassages.push({ ...passage, category, priority: false });
+            }
+          });
+        }
       });
     }
     
-    // Select a random passage
-    const selectedPassage = availablePassages[Math.floor(Math.random() * availablePassages.length)];
+    // If all passages have been used, reset the used set and prioritize again
+    if (availablePassages.length === 0) {
+      setUsedPassages(new Set());
+      // Recollect priority passages first
+      priorityCategories.forEach(category => {
+        if (speechPassageBank[category]) {
+          speechPassageBank[category].forEach(passage => {
+            availablePassages.push({ ...passage, category, priority: true });
+          });
+        }
+      });
+    }
+    
+    // Select a passage, preferring neurological assessments
+    const priorityPassages = availablePassages.filter(p => p.priority);
+    const passagePool = priorityPassages.length > 0 ? priorityPassages : availablePassages;
+    const selectedPassage = passagePool[Math.floor(Math.random() * passagePool.length)];
     
     // Mark as used
     setUsedPassages(prev => new Set([...prev, selectedPassage.id]));
     
-    // Set current passage and metadata
+    // Set current passage and enhanced metadata
     setCurrentPassage(selectedPassage.text);
     setPassageMetadata({
       id: selectedPassage.id,
       category: selectedPassage.category,
       difficulty: selectedPassage.difficulty,
       focus: selectedPassage.focus,
-      medicalTerms: selectedPassage.medicalTerms
+      medicalTerms: selectedPassage.medicalTerms,
+      strokeSensitive: selectedPassage.strokeSensitive || [],
+      priority: selectedPassage.priority || false,
+      assessmentType: getAssessmentTypeDescription(selectedPassage.category),
+      instructions: getPassageInstructions(selectedPassage)
     });
     
     return selectedPassage;
   }, [speechPassageBank, usedPassages]);
+
+  // Get user-friendly assessment type description
+  const getAssessmentTypeDescription = (category) => {
+    const descriptions = {
+      neurological: 'Neurological Motor Assessment',
+      motor: 'Speech Motor Control Assessment', 
+      aphasia: 'Language & Aphasia Screening',
+      cognitive: 'Cognitive Function Assessment',
+      spontaneous: 'Spontaneous Speech Evaluation',
+      emotional: 'Prosody & Emotional Expression'
+    };
+    return descriptions[category] || 'General Speech Assessment';
+  };
+
+  // Get specific instructions for each passage type
+  const getPassageInstructions = (passage) => {
+    const baseInstructions = {
+      neurological: [
+        'Speak clearly and at a comfortable pace',
+        'Focus on precise articulation of each sound',
+        'Pay attention to difficult consonant combinations'
+      ],
+      motor: [
+        'Maintain steady rhythm and timing',
+        'Coordinate breath support with speech',
+        'Repeat sequences exactly as shown'
+      ],
+      aphasia: [
+        'Take your time to find the right words',
+        'Speak as naturally as possible',
+        'Don\'t worry about perfect pronunciation'
+      ],
+      cognitive: [
+        'Think through the task step by step',
+        'Organize your thoughts before speaking',
+        'Provide clear, detailed responses'
+      ],
+      spontaneous: [
+        'Speak naturally about the topic',
+        'Use your own words and experiences',
+        'Take time to organize your thoughts'
+      ],
+      emotional: [
+        'Express the emotions clearly in your voice',
+        'Vary your tone and pace appropriately',
+        'Focus on emotional expression'
+      ]
+    };
+    
+    return baseInstructions[passage.category] || [
+      'Read the passage clearly and naturally',
+      'Take your time and speak at a comfortable pace'
+    ];
+  };
 
   // Fetch recent speech analyses
   const fetchRecentSpeechAnalyses = useCallback(async () => {
@@ -207,25 +382,45 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
       return;
     }
 
-    setRecordingStatus("Analyzing speech patterns...");
+    setRecordingStatus("Analyzing speech patterns with multimodal AI...");
     
     try {
-      // Enhanced analysis payload with passage metadata
-      const analysisPayload = {
-        transcript: speechTranscript,
-        expectedText: currentPassage,
-        passageMetadata: passageMetadata,
-        timestamp: new Date().toISOString()
+      // Get current facial and postural metrics from props or parent callback
+      const currentFacialMetrics = facialMetrics || onSpeechMetricsUpdate?.facialMetrics || null;
+      const currentPostureMetrics = postureMetrics || onSpeechMetricsUpdate?.postureMetrics || null;
+      
+      // Calculate basic audio features from transcript
+      const audioFeatures = {
+        wordCount: speechTranscript.split(/\s+/).length,
+        averageWordLength: speechTranscript.split(/\s+/).reduce((acc, word) => acc + word.length, 0) / speechTranscript.split(/\s+/).length,
+        speechRate: speechTranscript.split(/\s+/).length * 60 / 30, // Assuming 30 second recording
+        pauseFrequency: (speechTranscript.match(/[.!?]/g) || []).length,
+        complexityScore: speechTranscript.split(/[,;:]/g).length
       };
       
-      const data = await ApiService.analyzeSpeech(analysisPayload.transcript, analysisPayload.expectedText);
+      // Enhanced analysis payload with multimodal data
+      const analysisPayload = {
+        passageMetadata: passageMetadata,
+        facialMetrics: currentFacialMetrics,
+        postureMetrics: currentPostureMetrics,
+        audioFeatures: audioFeatures
+      };
+      
+      const data = await ApiService.analyzeSpeech(speechTranscript, currentPassage, analysisPayload);
       setSpeechMetrics(data || {});
-      setRecordingStatus("Analysis complete.");
+      setRecordingStatus("Multimodal analysis complete.");
       setError(null);
       
-      // Update parent component with speech metrics
+      // Update parent component with enhanced speech metrics
       if (onSpeechMetricsUpdate && data) {
-        onSpeechMetricsUpdate(data);
+        onSpeechMetricsUpdate({
+          ...data,
+          multimodalData: {
+            facialCorrelation: data.enhancedAnalysis?.multimodalCorrelation?.facialSpeechCorrelation,
+            posturalImpact: data.enhancedAnalysis?.multimodalCorrelation?.posturalImpact,
+            integratedRisk: data.enhancedAnalysis?.multimodalCorrelation?.integratedRiskLevel
+          }
+        });
       }
       
       // Call completion callback if provided
@@ -565,12 +760,19 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
           </div>
         </motion.div>
         
-        {/* Reading Passage */}
+        {/* Enhanced Reading Passage with Stroke-Specific Guidance */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h4 className="font-bold text-gray-800 text-lg">READING PASSAGE:</h4>
+            <h4 className="font-bold text-gray-800 text-lg">
+              {passageMetadata?.assessmentType || 'READING PASSAGE'}:
+            </h4>
             {passageMetadata && (
               <div className="flex items-center space-x-2 text-xs">
+                {passageMetadata.priority && (
+                  <span className="px-2 py-1 rounded-full bg-red-500 text-white font-bold">
+                    PRIORITY
+                  </span>
+                )}
                 <span className={`px-2 py-1 rounded-full text-white font-bold ${
                   passageMetadata.difficulty === 'easy' ? 'bg-green-500' :
                   passageMetadata.difficulty === 'medium' ? 'bg-yellow-500' :
@@ -586,17 +788,43 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
             )}
           </div>
           
+          {/* Stroke-Specific Instructions */}
+          {passageMetadata?.instructions && (
+            <motion.div 
+              className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-lg mb-4"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h5 className="font-bold text-blue-800 mb-2 flex items-center">
+                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Instructions for This Assessment:
+              </h5>
+              <ul className="space-y-1 text-sm text-blue-700">
+                {passageMetadata.instructions.map((instruction, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-blue-500 mr-2">•</span>
+                    <span>{instruction}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          )}
+          
+          {/* Main Passage Display */}
           <motion.div 
-            className="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-xl min-h-[100px] text-gray-800 shadow-inner"
+            className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600 p-6 rounded-xl min-h-[100px] text-gray-800 shadow-inner"
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.2 }}
           >
             <p className="text-lg leading-relaxed font-medium">
-              {currentPassage || "Loading passage..."}
+              {currentPassage || "Loading neurological assessment passage..."}
             </p>
           </motion.div>
           
-          {/* Passage Information */}
+          {/* Enhanced Passage Information */}
           {passageMetadata && (
             <motion.div 
               className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200"
@@ -604,13 +832,13 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
               animate={{ opacity: 1, height: 'auto' }}
               transition={{ duration: 0.3 }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <h5 className="font-bold text-gray-700 mb-2">Assessment Focus:</h5>
                   <div className="flex flex-wrap gap-1">
                     {passageMetadata.focus?.map((focus, index) => (
                       <span key={index} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                        {focus.replace('_', ' ')}
+                        {focus.replace(/_/g, ' ')}
                       </span>
                     ))}
                   </div>
@@ -625,6 +853,31 @@ const SpeechAnalysis = ({ onSpeechMetricsUpdate, onComplete }) => {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <h5 className="font-bold text-gray-700 mb-2">Stroke Indicators:</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {passageMetadata.strokeSensitive?.slice(0, 4).map((term, index) => (
+                      <span key={index} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
+                        {term}
+                      </span>
+                    ))}
+                    {passageMetadata.strokeSensitive?.length > 4 && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                        +{passageMetadata.strokeSensitive.length - 4} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* New Passage Button */}
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <button
+                  onClick={generateNewPassage}
+                  className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded transition-colors"
+                >
+                  Generate New Assessment Passage
+                </button>
               </div>
             </motion.div>
           )}

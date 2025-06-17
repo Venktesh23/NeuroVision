@@ -343,6 +343,239 @@ class MongoService {
       throw error;
     }
   }
+
+  // Enhanced user profile methods
+  async updateUserProfile(userId, profileData) {
+    try {
+      const updateData = {
+        ...profileData,
+        updatedAt: new Date().toISOString()
+      };
+      
+      const result = await this.getDb().collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: updateData }
+      );
+      
+      return result.modifiedCount > 0;
+    } catch (error) {
+      console.error('[ERROR] Failed to update user profile:', error);
+      throw error;
+    }
+  }
+
+  async getUserProfile(userId) {
+    try {
+      const user = await this.getDb().collection('users').findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { password: 0 } } // Exclude password from response
+      );
+      
+      if (!user) return null;
+
+      // Get user statistics
+      const assessmentStats = await this.getUserAssessmentStats(userId);
+      const recentAssessments = await this.getUserAssessments(userId, 5);
+      const speechAnalyses = await this.getUserSpeechAnalyses(userId, 5);
+
+      return {
+        ...user,
+        statistics: assessmentStats,
+        recentAssessments,
+        recentSpeechAnalyses: speechAnalyses
+      };
+    } catch (error) {
+      console.error('[ERROR] Failed to get user profile:', error);
+      throw error;
+    }
+  }
+
+  async getUserAssessmentStats(userId) {
+    try {
+      const stats = await this.getDb().collection('assessments').aggregate([
+        { $match: { userId: new ObjectId(userId) } },
+        {
+          $group: {
+            _id: null,
+            totalAssessments: { $sum: 1 },
+            highRiskCount: {
+              $sum: { $cond: [{ $eq: ['$riskLevel', 'high'] }, 1, 0] }
+            },
+            mediumRiskCount: {
+              $sum: { $cond: [{ $eq: ['$riskLevel', 'medium'] }, 1, 0] }
+            },
+            lowRiskCount: {
+              $sum: { $cond: [{ $eq: ['$riskLevel', 'low'] }, 1, 0] }
+            },
+            lastAssessmentDate: { $max: '$createdAt' },
+            firstAssessmentDate: { $min: '$createdAt' }
+          }
+        }
+      ]).toArray();
+
+      if (stats.length === 0) {
+        return {
+          totalAssessments: 0,
+          highRiskCount: 0,
+          mediumRiskCount: 0,
+          lowRiskCount: 0,
+          lastAssessmentDate: null,
+          firstAssessmentDate: null,
+          riskTrend: 'stable'
+        };
+      }
+
+      const result = stats[0];
+      
+      // Calculate risk trend (last 5 vs previous 5 assessments)
+      const riskTrend = await this.calculateUserRiskTrend(userId);
+
+      return {
+        ...result,
+        riskTrend
+      };
+    } catch (error) {
+      console.error('[ERROR] Failed to get user assessment stats:', error);
+      throw error;
+    }
+  }
+
+  async calculateUserRiskTrend(userId) {
+    try {
+      const recentAssessments = await this.getDb().collection('assessments')
+        .find({ userId: new ObjectId(userId) })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .toArray();
+
+      if (recentAssessments.length < 4) return 'insufficient_data';
+
+      const recent5 = recentAssessments.slice(0, 5);
+      const previous5 = recentAssessments.slice(5, 10);
+
+      const calculateRiskScore = (assessments) => {
+        const riskValues = { 'low': 1, 'medium': 2, 'high': 3 };
+        const totalScore = assessments.reduce((sum, assessment) => {
+          return sum + (riskValues[assessment.riskLevel] || 1);
+        }, 0);
+        return totalScore / assessments.length;
+      };
+
+      if (previous5.length === 0) return 'stable';
+
+      const recentScore = calculateRiskScore(recent5);
+      const previousScore = calculateRiskScore(previous5);
+
+      if (recentScore > previousScore + 0.3) return 'increasing';
+      if (recentScore < previousScore - 0.3) return 'decreasing';
+      return 'stable';
+    } catch (error) {
+      console.error('[ERROR] Failed to calculate risk trend:', error);
+      return 'stable';
+    }
+  }
+
+  async getUserSpeechAnalyses(userId, limit = 5) {
+    try {
+      const analyses = await this.getDb().collection('speechAnalyses')
+        .find({ userId: new ObjectId(userId) })
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .toArray();
+      
+      return analyses.map(doc => ({
+        id: doc._id,
+        transcript: doc.transcript,
+        readingPassage: doc.readingPassage,
+        coherenceScore: doc.coherenceScore,
+        slurredSpeechScore: doc.slurredSpeechScore,
+        wordFindingScore: doc.wordFindingScore,
+        overallRisk: doc.overallRisk,
+        observations: doc.observations,
+        timestamp: doc.timestamp
+      }));
+    } catch (error) {
+      console.error('[ERROR] Failed to get user speech analyses:', error);
+      throw error;
+    }
+  }
+
+  // Save speech analysis with user association
+  async saveSpeechAnalysisForUser(analysisData, userId = null) {
+    try {
+      const collection = this.getDb().collection('speechAnalyses');
+      
+      const analysis = {
+        _id: new Date().getTime().toString(),
+        userId: userId ? new ObjectId(userId) : null,
+        transcript: analysisData.transcript,
+        readingPassage: analysisData.readingPassage || null,
+        coherenceScore: analysisData.coherenceScore,
+        slurredSpeechScore: analysisData.slurredSpeechScore,
+        wordFindingScore: analysisData.wordFindingScore,
+        overallRisk: analysisData.overallRisk,
+        observations: analysisData.observations || [],
+        timestamp: analysisData.timestamp || new Date().toISOString(),
+        createdAt: new Date()
+      };
+      
+      const result = await collection.insertOne(analysis);
+      console.log('[INFO] Speech analysis saved for user:', userId);
+      
+      return { id: analysis._id, insertedId: result.insertedId };
+    } catch (error) {
+      console.error('[ERROR] Failed to save speech analysis for user:', error);
+      throw error;
+    }
+  }
+
+  // Get user's complete history with pagination
+  async getUserHistory(userId, page = 1, limit = 20) {
+    try {
+      const skip = (page - 1) * limit;
+      
+      // Get assessments and speech analyses
+      const [assessments, speechAnalyses, totalAssessments, totalSpeechAnalyses] = await Promise.all([
+        this.getDb().collection('assessments')
+          .find({ userId: new ObjectId(userId) })
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(Math.floor(limit / 2))
+          .toArray(),
+        
+        this.getDb().collection('speechAnalyses')
+          .find({ userId: new ObjectId(userId) })
+          .sort({ timestamp: -1 })
+          .skip(skip)
+          .limit(Math.floor(limit / 2))
+          .toArray(),
+        
+        this.getDb().collection('assessments').countDocuments({ userId: new ObjectId(userId) }),
+        this.getDb().collection('speechAnalyses').countDocuments({ userId: new ObjectId(userId) })
+      ]);
+
+      // Combine and sort by date
+      const combined = [
+        ...assessments.map(a => ({ ...a, type: 'assessment', date: a.createdAt })),
+        ...speechAnalyses.map(s => ({ ...s, type: 'speech', date: s.timestamp }))
+      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      return {
+        data: combined.slice(0, limit),
+        pagination: {
+          page,
+          limit,
+          totalAssessments,
+          totalSpeechAnalyses,
+          totalItems: totalAssessments + totalSpeechAnalyses,
+          totalPages: Math.ceil((totalAssessments + totalSpeechAnalyses) / limit)
+        }
+      };
+    } catch (error) {
+      console.error('[ERROR] Failed to get user history:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new MongoService(); 

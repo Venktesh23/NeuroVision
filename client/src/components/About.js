@@ -103,19 +103,19 @@ const About = () => {
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <ul className="space-y-2 text-amber-800 text-sm">
               <li className="flex items-start">
-                <span className="text-amber-600 mr-2">⚠️</span>
+                <span className="text-amber-600 mr-2">•</span>
                 <span>This application is for educational and research purposes only</span>
               </li>
               <li className="flex items-start">
-                <span className="text-amber-600 mr-2">⚠️</span>
+                <span className="text-amber-600 mr-2">•</span>
                 <span>Results should not be used as a substitute for professional medical advice</span>
               </li>
               <li className="flex items-start">
-                <span className="text-amber-600 mr-2">⚠️</span>
+                <span className="text-amber-600 mr-2">•</span>
                 <span>Consult healthcare professionals for any medical concerns</span>
               </li>
               <li className="flex items-start">
-                <span className="text-amber-600 mr-2">⚠️</span>
+                <span className="text-amber-600 mr-2">•</span>
                 <span>Ensure good lighting and stable internet connection for best results</span>
               </li>
             </ul>

@@ -10,10 +10,10 @@ import { ToastProvider, useToast } from './components/ToastNotification';
 import AuthPage from './components/Auth/AuthPage';
 import UserProfile from './components/UserProfile';
 import About from './components/About';
-import UnifiedAssessment from './components/UnifiedAssessment';
+import PolishedAssessment from './components/PolishedAssessment';
 
 // Lazy load heavy components
-const HistoricalData = lazy(() => import("./components/HistoricalData"));
+const EnhancedHistory = lazy(() => import("./components/EnhancedHistory"));
 const FaceMeshDetection = lazy(() => import("./components/FaceMeshDetection"));
 const PoseDetection = lazy(() => import("./components/PoseDetection"));
 const StrokeAssessment = lazy(() => import("./components/StrokeAssessment"));
@@ -62,13 +62,13 @@ const ComponentLoader = ({ message = "Loading component..." }) => (
 );
 
 // Wrap critical components with error boundaries
-const SafeHistoricalData = withErrorBoundary(
+const SafeEnhancedHistory = withErrorBoundary(
   (props) => (
     <Suspense fallback={<ComponentLoader />}>
-      <HistoricalData {...props} />
+      <EnhancedHistory {...props} />
     </Suspense>
   ), 
-  "HistoricalData"
+  "EnhancedHistory"
 );
 
 const SafeDetectionView = withErrorBoundary(DetectionView, "DetectionView");
@@ -330,11 +330,11 @@ const AuthenticatedApp = () => {
 
       <main className="container mx-auto p-6" role="main">
         <AnimatePresence mode="wait">
-          {/* Unified Assessment Tab */}
+          {/* Polished Assessment Tab */}
           {activeTab === "assessment" && (
             <motion.div 
               key="assessment"
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+              className="space-y-8"
               variants={containerVariants}
               initial="initial"
               animate="animate"
@@ -343,43 +343,37 @@ const AuthenticatedApp = () => {
               id="assessment-panel"
               aria-labelledby="assessment-tab"
             >
-              {/* Camera Input Section */}
-              <div className="lg:col-span-2 space-y-8">
-                <ErrorBoundary componentName="Camera System">
-                  <motion.div 
-                    className="bg-white rounded-xl shadow-xl p-6 border border-gray-100 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300"
-                    variants={tabVariants}
-                    initial="initial"
-                    animate="animate"
+              {/* Camera Feed - Hidden during results phase */}
+              {currentAssessmentPhase !== 'results' && currentAssessmentPhase !== 'instruction' && (
+                <div className="bg-white rounded-xl shadow-xl p-6 border border-gray-100">
+                  <h2 className="text-2xl font-bold mb-6 text-gray-800">Live Assessment Feed</h2>
+                  <div 
+                    className="relative bg-black rounded-xl overflow-hidden shadow-inner mx-auto" 
+                    style={{ aspectRatio: '4/3', maxWidth: '600px' }}
+                    role="img"
+                    aria-label="Live camera feed for neurological assessment"
                   >
-                    <h2 className="text-2xl font-black mb-6 text-gray-800">Camera Input</h2>
-                    <div 
-                      className="relative bg-black rounded-xl overflow-hidden shadow-inner" 
-                      style={{ aspectRatio: '4/3' }}
-                      role="img"
-                      aria-label="Live camera feed for neurological assessment"
-                    >
-                      {isInitializingCamera ? (
-                        <CameraLoader />
-                      ) : (
-                        <>
-                          <Webcam ref={webcamRef} isDetecting={isDetecting} />
-                          {/* Only show detection overlay when not in results phase */}
-                          {currentAssessmentPhase !== 'results' && currentAssessmentPhase !== 'instruction' && (
-                            <SafeDetectionView
-                              ref={canvasRef}
-                              faceMeshResults={faceMeshResults}
-                              poseResults={poseResults}
-                            />
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </motion.div>
-                </ErrorBoundary>
+                    {isInitializingCamera ? (
+                      <CameraLoader />
+                    ) : (
+                      <>
+                        <Webcam ref={webcamRef} isDetecting={isDetecting} />
+                        {currentAssessmentPhase !== 'results' && currentAssessmentPhase !== 'instruction' && (
+                          <SafeDetectionView
+                            ref={canvasRef}
+                            faceMeshResults={faceMeshResults}
+                            poseResults={poseResults}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
                 
-                {/* Real-time Analysis Components - Only load when detecting */}
-                {isDetecting && (
+              {/* Hidden Analysis Components - Only load when detecting */}
+              {isDetecting && (
+                <div style={{ display: 'none' }}>
                   <ErrorBoundary componentName="Real-time Analysis">
                     <Suspense fallback={<ComponentLoader />}>
                       <FaceMeshDetection
@@ -403,32 +397,30 @@ const AuthenticatedApp = () => {
                       />
                     </Suspense>
                   </ErrorBoundary>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Unified Assessment Panel */}
-              <div className="space-y-8">
-                <ErrorBoundary componentName="Unified Assessment">
-                  <UnifiedAssessment
-                    webcamRef={webcamRef}
-                    canvasRef={canvasRef}
-                    isDetecting={isDetecting}
-                    onToggleDetection={toggleDetection}
-                    faceMeshResults={faceMeshResults}
-                    poseResults={poseResults}
-                    asymmetryMetrics={asymmetryMetrics}
-                    postureMetrics={postureMetrics}
-                    speechMetrics={speechMetrics}
-                    onSpeechMetricsUpdate={handleSpeechMetricsUpdate}
-                    onClearResults={clearResults}
-                    onSaveAssessment={manualSave}
-                    isSaving={isSaving}
-                    riskLevel={riskLevel}
-                    assessmentFindings={assessmentFindings}
-                    onPhaseChange={setCurrentAssessmentPhase}
-                  />
-                </ErrorBoundary>
-              </div>
+              {/* Polished Assessment Component */}
+              <ErrorBoundary componentName="Polished Assessment">
+                <PolishedAssessment
+                  webcamRef={webcamRef}
+                  canvasRef={canvasRef}
+                  isDetecting={isDetecting}
+                  onToggleDetection={toggleDetection}
+                  faceMeshResults={faceMeshResults}
+                  poseResults={poseResults}
+                  asymmetryMetrics={asymmetryMetrics}
+                  postureMetrics={postureMetrics}
+                  speechMetrics={speechMetrics}
+                  onSpeechMetricsUpdate={handleSpeechMetricsUpdate}
+                  onClearResults={clearResults}
+                  onSaveAssessment={manualSave}
+                  isSaving={isSaving}
+                  riskLevel={riskLevel}
+                  assessmentFindings={assessmentFindings}
+                  onPhaseChange={setCurrentAssessmentPhase}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -444,7 +436,7 @@ const AuthenticatedApp = () => {
               id="history-panel"
               aria-labelledby="history-tab"
             >
-              <SafeHistoricalData />
+              <SafeEnhancedHistory />
             </motion.div>
           )}
 
