@@ -62,40 +62,6 @@ const LoginForm = () => {
 
   return (
     <div className="space-y-6">
-      {/* Demo Mode Notification */}
-      {isDemoMode && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4"
-        >
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-blue-800">Demo Mode</h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p>Backend server is not available. The application is running in demo mode.</p>
-                <p className="mt-1 text-xs">You can still create an account or sign in - data will be stored locally.</p>
-                <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={fillDemoCredentials}
-                    className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                  >
-                    Use Demo Account
-                  </button>
-                  <span className="text-xs text-blue-600">Demo: demo@neurovision.com | demo123</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
